@@ -1,98 +1,97 @@
 import os
 import folium
-geoJsonData = {
-    "features": [
-        {
-            "geometry": {
-                "coordinates": [[
-                    [
-                        12.98583984375,
-                        56.70450561416937
-                    ],
-                    [
-                        14.589843749999998,
-                        57.604221411628735
-                    ],
-                    [
-                        13.590087890625,
-                        58.15331598640629
-                    ],
-                    [
-                        11.953125,
-                        57.955674494979526
-                    ],
-                    [
-                        11.810302734375,
-                        58.76250326278713
-                    ]
-                ]],
-                "type": "Polygon"
-            },
-            "properties": {
-                "stroke": "#fc1717",
-                "stroke-opacity": 1,
-                "stroke-width": 2,
-                "name": "name1"
-            },
-            "type": "Feature"
-        },
-        {
-            "geometry": {
-                "coordinates": [
-                    [
-                        14.9468994140625,
-                        57.7569377956732
-                    ],
-                    [
-                        15.078735351562498,
-                        58.06916140721414
-                    ],
-                    [
-                        15.4302978515625,
-                        58.09820267068277
-                    ],
-                    [
-                        15.281982421875002,
-                        58.318144965188246
-                    ],
-                    [
-                        15.4852294921875,
-                        58.36427519285588
-                    ]
-                ],
-                "type": "LineString"
-            },
-            "properties": {
-                "stroke": "#1f1a95",
-                "stroke-opacity": 1,
-                "stroke-width": 2,
-                "name": "name1"
-            },
-            "type": "Feature"
-        }
-    ],
-    "type": "FeatureCollection"
-}
-m = folium.Map(location=[ 56.7, 12.9], zoom_start=6)
+import sys
+from geodata import *
+from folium.features import DivIcon
+import webbrowser
+import pygeoj as pgj
 
-html="""
-    <h1> This is a big popup</h1><br>
-    With a few lines of code...
-    <p>
-    <code>
-        from numpy import *<br>
-        exp(-2*pi)
-    </code>
-    </p>
-    """
-iframe = folium.IFrame(html=html, width=500, height=300)
+class Map():
+    def __init__(self):
+        self.m = folium.Map(location=[ 48.747316, 44.51088], zoom_start=10)
 
-folium.GeoJson(geoJsonData,
-    style_function=lambda x: {
-        'color' : x['properties']['stroke'],
-        'weight' : x['properties']['stroke-width'],
-        'opacity': 0.6,
-        'fillColor' : x['properties']['stroke'],
-        'name' : x['properties']['name'],
-        }).add_child(folium.Popup(iframe,max_width=500)).add_to(m)
-m.save(os.path.join('', 'm.html'))
+    def draw_city_boundary(self):
+        boundary = pgj.load(filepath="./data/boundary_gjs.geojson")
+        fg=folium.FeatureGroup(name="City contours(all)")
+        for gj in boundary.__dict__['_data']['features']:
+            pl = folium.GeoJson(gj)
+            pl.add_to(fg)
+        self.m.add_child(fg)
+
+    def draw_city_district(self):
+        admins_geojs = pgj.load(filepath="./data/admin.geojson")
+        fg = folium.FeatureGroup(name="City district")
+        for gj in admins_geojs.__dict__['_data']['features']:
+            if gj['properties']['admin_leve'] == 9:
+                pl = folium.GeoJson(gj)
+                pl.add_child(folium.Popup(gj['properties']['name']))
+                pl.add_to(fg)
+        self.m.add_child(fg)
+
+    def draw_transport_points(self):
+        fg1=folium.FeatureGroup(name="Transport Points")
+        tp_geojs = pgj.load(filepath="./data/transport_points.geojson")
+        for gj in tp_geojs.__dict__['_data']['features']:
+            if gj['properties']['name'] != None:
+                pl = folium.GeoJson(gj)
+                pl.add_child(folium.Popup(gj['properties']['name']))
+                pl.add_to(fg1)
+        self.m.add_child(fg1)
+
+    def main(self):
+        self.draw_city_boundary()
+        self.draw_city_district()
+        self.draw_transport_points()
+        self.m.add_child(folium.LayerControl())
+        self.m.save(os.path.join('', 'm.html'))
+        webbrowser.open('m.html', new=2)
+
+if __name__ == '__main__':
+    app = Map()
+    app.main()
+
+#----------------------------------------------
+#
+# for gj in geoJsonData['features']:
+#    # print(gj)
+#     pl = folium.GeoJson(gj,style_function=lambda x: {
+#         'color' : x['properties']['stroke'],
+#         'weight' : x['properties']['stroke-width'],
+#         'opacity': x['properties']['stroke-opacity'],
+#         'fillColor' : x['properties']['stroke'],
+#         'name' : x['properties']['name'],
+#         })
+#     pl.add_child(folium.Popup(gj['properties']['name']))
+#     pl.add_to(fg)
+# m.add_child(fg)
+#
+# html="""
+#     <h1> This is a big popup</h1><br>
+#     With a few lines of code...
+#     <p>
+#     <code>
+#         from numpy import *<br>
+#         exp(-2*pi)
+#     </code>
+#     </p>
+#     """
+# iframe = folium.IFrame(html=html, width=500, height=300)
+# #.add_child(folium.Popup(iframe,max_width=500))
+#
+#
+# folium.GeoJson(geoJsonData,style_function=lambda x: {
+#         'color' : x['properties']['stroke'],
+#         'weight' : x['properties']['stroke-width'],
+#         'opacity': x['properties']['stroke-opacity'],
+#         'fillColor' : x['properties']['stroke'],
+#         'Popup' : x['properties']['name'],
+#         }).add_to(m)
+#
+# folium.map.Marker(
+#     [56.70450561416937,12.98583984375],
+#     icon=DivIcon(
+#         icon_size=(150,36),
+#         icon_anchor=(0,0),
+#         html='<div style="font-size: 24pt">Test</div>',
+#         )
+#     ).add_to(m)
