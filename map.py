@@ -23,6 +23,9 @@ class Map():
         self.tp_geojs = pgj.load(filepath="./data/transport_points.geojson")
         self.m.add_child(self.fg_tp)
 
+        self.fg_grid = folium.FeatureGroup(name="Grid")
+        self.m.add_child(self.fg_grid)
+
     def draw_city_boundary(self,data,featuregroup):
         for gj in data.__dict__['_data']['features']:
             pl = folium.GeoJson(gj)
@@ -42,36 +45,66 @@ class Map():
                 pl.add_child(folium.Popup(gj['properties']['name']))
                 pl.add_to(featuregroup)
 
-    def generate_map_grid(self,featuregroup,map_out):
-        b = featuregroup.get_bounds()
+    def generate_map_grid(self,featuregroup_in,map_out):
+        b = featuregroup_in.get_bounds()
 
-        lt = [b[1][0], b[0][1]] #left-top
-        lb = [b[0][0], b[0][1]] # left-bottom
-        rb = [b[0][0], b[1][1]] # right-bottom
-        rt = [b[1][0], b[1][1]] # right-top
+        lt_abs = [b[1][0], b[0][1]] #left-top
+        lb_abs = [b[0][0], b[0][1]] # left-bottom
+        rb_abs = [b[0][0], b[1][1]] # right-bottom
+        rt_abs = [b[1][0], b[1][1]] # right-top
 
-        folium.PolyLine([lt,rt,rb,lb,lt],color='red').add_to(map_out)
+        folium.PolyLine([lt_abs,rt_abs,rb_abs,lb_abs,lt_abs],color='blue').add_to(self.fg_grid)
 
-        folium.RegularPolygonMarker(lt,color='black').add_to(map_out)    #left-top
-        folium.RegularPolygonMarker(lb,color='red').add_to(map_out)      #left-bottom
-        folium.RegularPolygonMarker(rb,color='green').add_to(map_out)   #right-bottom
-        folium.RegularPolygonMarker(rt,color='yellow').add_to(map_out)  #right-top
+        city_grid = pgj.new()
 
-        folium.RegularPolygonMarker(self.get_new_coord(lt,0,1000),color='cian').add_to(map_out)
+        count_x = round((self.get_distance([lt_abs,rt_abs])/2500)+0.5)
+        count_y = round((self.get_distance([lt_abs,lb_abs])/2500)+0.5)
+
+        for i in range(0,count_y): #from lt to lb
+            lt_str = self.get_new_coord(list(reversed(lt_abs)), 180, 2500 * i)
+            for j in range(0, count_x): #from lt to rt
+                lt = self.get_new_coord(lt_str, 90, 2500 * j)
+                rt = self.get_new_coord(lt, 90, 2500)
+                rb = self.get_new_coord(rt, 180, 2500)
+                lb = self.get_new_coord(rb, 270, 2500)
+                points = [[lt, rt, rb, lb]]
+                city_grid.add_feature(properties = {"stroke": "#fc1717",
+                                                    "fill_color": "#69c408",
+                                                    "prestige": i+j},
+                                        geometry={"type": "Polygon", "coordinates": points})
+
+        city_grid.save("./data/city_grid.geojson")
+
+    def draw_city_grid(self,data,featuregroup):
+        for gj in data.__dict__['_data']['features']:
+            pl = folium.GeoJson(gj['geometry'], style_function=lambda x: {
+                'color': gj['properties']['stroke'],
+                'fillColor': gj['properties']['fill_color']
+            })
+            pl.add_child(folium.Popup(str(gj['properties']['prestige'])))
+            pl.add_to(featuregroup)
 
     def get_new_coord(self,coords,azimut,radius):
+        # azimut: 0 - up, 90 - right, 180 - down, 270 - left
         geod = Geodesic.WGS84  # define the WGS84 ellipsoid
         dic = geod.Direct(coords[1],coords[0],azimut,radius)
         return [dic['lon2'],dic['lat2']]
 
+    def get_distance(self,coords):
+        geod = Geodesic.WGS84  # define the WGS84 ellipsoid
+        distance = geod.Inverse(coords[0][0],coords[0][1],coords[1][0],coords[1][1])
+        return float(distance['s12'])
+
     def main(self):
         self.draw_city_boundary(self.boundary,self.fg_cc)
         self.generate_map_grid(self.fg_cc,self.m)
-        #self.draw_city_district(self.admins_geojs,self.fg_cd)
-        #self.draw_transport_points(self.tp_geojs,self.fg_tp)
+        self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
+        self.draw_city_grid(self.city_grid_l, self.fg_grid)
+        self.draw_city_district(self.admins_geojs,self.fg_cd)
+        self.draw_transport_points(self.tp_geojs,self.fg_tp)
         self.m.add_child(folium.LayerControl())
         self.m.save(os.path.join('', 'map.html'))
-        webbrowser.open('map.html', new=2)
+        #webbrowser.open('map.html', new=2)
 
 if __name__ == '__main__':
     app = Map()
