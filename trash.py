@@ -1,5 +1,13 @@
 #----------------------------------------------
 #
+# def get_minimum_distance(self, point, points):
+#     minimum = 10 ** 10 + 0.1
+#     for i in points:
+#         dist = self.get_distance([point, i])
+#         if dist < minimum:
+#             minimum = dist
+#     return minimum
+
 # for gj in geoJsonData['features']:
 #    # print(gj)
 #     pl = folium.GeoJson(gj,style_function=lambda x: {

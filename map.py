@@ -6,6 +6,7 @@ from folium.features import DivIcon
 import webbrowser
 import pygeoj as pgj
 from geographiclib.geodesic import Geodesic
+from shapely.geometry import Point, Polygon
 
 class Map():
     def __init__(self):
@@ -45,7 +46,7 @@ class Map():
                 pl.add_child(folium.Popup(gj['properties']['name']))
                 pl.add_to(featuregroup)
 
-    def generate_map_grid(self,featuregroup_in,map_out):
+    def generate_city_grid(self,featuregroup_in,map_out):
         b = featuregroup_in.get_bounds()
 
         lt_abs = [b[1][0], b[0][1]] #left-top
@@ -84,18 +85,20 @@ class Map():
             pl.add_child(folium.Popup(str(gj['properties']['prestige'])))
             pl.add_to(featuregroup)
 
-    def remove_null_cell(self,data):
-        points = self.boundary.get_feature(0).geometry.coordinates[0][0]
+    def remove_null_cells(self,data):
+        points = self.boundary.get_feature(0).geometry.coordinates
+        data_out = pgj.new()
         for i in range(0,len(data)):
-            point = self.get_new_coord(data.get_feature(i).geometry.coordinates[0][0], 135, 2500*2**0.5/2)
-            dist = self.get_minimum_distance(point,points)
-            print(dist)
-            if dist > (2500*2**0.5/2):
-                data.__dict__['_data']['features'][i]['properties']['fill_color'] = "#000036"
-                data.__dict__['_data']['features'][i]['properties']['stroke'] = "#000000"
+            layer1 = Polygon(data.get_feature(i).geometry.coordinates[0])
+            layer2 = Polygon(points[0][0])
+            points_intersect = layer1.intersection(layer2)
+            if not points_intersect.is_empty:
+                data_out.addfeature(data.get_feature(i))
+                # data.__dict__['_data']['features'][i]['properties']['fill_color'] = "#000036"
+                # data.__dict__['_data']['features'][i]['properties']['stroke'] = "#000000"
 
-        return  data
-    
+        return data_out
+
     def get_new_coord(self,coords,azimut,radius):
         # azimut: 0 - up, 90 - right, 180 - down, 270 - left
         geod = Geodesic.WGS84  # define the WGS84 ellipsoid
@@ -107,19 +110,11 @@ class Map():
         distance = geod.Inverse(coords[0][0],coords[0][1],coords[1][0],coords[1][1])
         return float(distance['s12'])
 
-    def get_minimum_distance(self,point,points):
-        minimum = 10**10+0.1
-        for i in points:
-            dist = self.get_distance([point,i])
-            if dist < minimum:
-                minimum = dist
-        return minimum
-
     def main(self):
         self.draw_city_boundary(self.boundary,self.fg_cc)
-        #self.generate_map_grid(self.fg_cc,self.m)
+        #self.generate_city_grid(self.fg_cc,self.m)
         self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
-        self.city_grid_l = self.remove_null_cell(self.city_grid_l)
+        self.city_grid_l = self.remove_null_cells(self.city_grid_l)
         self.draw_city_grid(self.city_grid_l, self.fg_grid)
         #self.draw_city_district(self.admins_geojs,self.fg_cd)
         #self.draw_transport_points(self.tp_geojs,self.fg_tp)
