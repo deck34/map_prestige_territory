@@ -46,7 +46,7 @@ class Map():
                 pl.add_child(folium.Popup(gj['properties']['name']))
                 pl.add_to(featuregroup)
 
-    def generate_city_grid(self,featuregroup_in,map_out):
+    def generate_city_grid(self,featuregroup_in,map_out,size):
         b = featuregroup_in.get_bounds()
 
         lt_abs = [b[1][0], b[0][1]] #left-top
@@ -58,16 +58,16 @@ class Map():
 
         city_grid = pgj.new()
 
-        count_x = round((self.get_distance([lt_abs,rt_abs])/2500)+0.5)
-        count_y = round((self.get_distance([lt_abs,lb_abs])/2500)+0.5)
+        count_x = round((self.get_distance([lt_abs,rt_abs])/size)+0.5)
+        count_y = round((self.get_distance([lt_abs,lb_abs])/size)+0.5)
 
         for i in range(0,count_y): #from lt to lb
-            lt_str = self.get_new_coord(list(reversed(lt_abs)), 180, 2500 * i)
+            lt_str = self.get_new_coord(list(reversed(lt_abs)), 180, size * i)
             for j in range(0, count_x): #from lt to rt
-                lt = self.get_new_coord(lt_str, 90, 2500 * j)
-                rt = self.get_new_coord(lt, 90, 2500)
-                rb = self.get_new_coord(rt, 180, 2500)
-                lb = self.get_new_coord(rb, 270, 2500)
+                lt = self.get_new_coord(lt_str, 90, size * j)
+                rt = self.get_new_coord(lt, 90, size)
+                rb = self.get_new_coord(rt, 180, size)
+                lb = self.get_new_coord(rb, 270, size)
                 points = [[lt, rt, rb, lb]]
                 city_grid.add_feature(properties = {"stroke": "#fc1717",
                                                     "fill_color": "#85cdc1",
@@ -80,7 +80,9 @@ class Map():
         for gj in data.__dict__['_data']['features']:
             pl = folium.GeoJson(gj, style_function=lambda x: {
                 'color': x['properties']['stroke'],
-                'fillColor': x['properties']['fill_color']
+                'fillColor': x['properties']['fill_color'],
+                'opacity': 0,
+                'fillOpacity': 0.5
             })
             pl.add_child(folium.Popup(str(gj['properties']['prestige'])))
             pl.add_to(featuregroup)
@@ -110,9 +112,16 @@ class Map():
         distance = geod.Inverse(coords[0][0],coords[0][1],coords[1][0],coords[1][1])
         return float(distance['s12'])
 
+    def draw_rivers(self):
+        self.waterareas = pgj.load(filepath="./data/waterareas.geojson")
+        for gj in self.waterareas.__dict__['_data']['features']:
+            pl = folium.GeoJson(gj)
+            pl.add_to(self.m)
+
     def main(self):
         self.draw_city_boundary(self.boundary,self.fg_cc)
-        #self.generate_city_grid(self.fg_cc,self.m)
+        #self.draw_rivers()
+        #self.generate_city_grid(self.fg_cc,self.m,2500)
         self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
         self.city_grid_l = self.remove_null_cells(self.city_grid_l)
         self.draw_city_grid(self.city_grid_l, self.fg_grid)
