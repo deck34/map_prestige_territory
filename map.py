@@ -7,6 +7,9 @@ import webbrowser
 import pygeoj as pgj
 from geographiclib.geodesic import Geodesic
 from shapely.geometry import Point, Polygon
+from pyroutelib3 import Router
+import osrm
+osrm.RequestConfig.host = "router.project-osrm.org"
 
 class Map():
     def __init__(self):
@@ -118,6 +121,27 @@ class Map():
             pl = folium.GeoJson(gj)
             pl.add_to(self.m)
 
+    def generate_route(self,coords):
+
+        folium.Marker([coords[0][1],coords[0][0]]).add_to(self.m)
+        folium.Marker([coords[1][1], coords[1][0]]).add_to(self.m)
+
+        p1 = osrm.Point(latitude=coords[0][0], longitude=coords[0][1])
+        p2 = osrm.Point(latitude=coords[1][0], longitude=coords[1][1])
+
+        result = osrm.simple_route( p1, p2, output='route', overview="full", geometry='wkt')
+        list_coords = result[0]['geometry'].split(',')
+        for i in range(0,len(list_coords)):
+            if i == 0:
+                list_coords[i] = list_coords[i][list_coords[i].find('(')+1:]
+            if i == len(list_coords)-1:
+                list_coords[i] = list_coords[i][:list_coords[i].find(')')-1]
+            list_coords[i] = list_coords[i].split(' ')
+            temp = float(list_coords[i][0])
+            list_coords[i][0] = float(list_coords[i][1])
+            list_coords[i][1] = temp
+        folium.PolyLine(list_coords).add_to(self.m)
+
     def main(self):
         self.draw_city_boundary(self.boundary,self.fg_cc)
         #self.draw_rivers()
@@ -125,6 +149,7 @@ class Map():
         self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
         self.city_grid_l = self.remove_null_cells(self.city_grid_l)
         self.draw_city_grid(self.city_grid_l, self.fg_grid)
+        self.generate_route([ self.city_grid_l.get_feature(0).geometry.coordinates[0][2],self.city_grid_l.get_feature(11).geometry.coordinates[0][2]])
         #self.draw_city_district(self.admins_geojs,self.fg_cd)
         #self.draw_transport_points(self.tp_geojs,self.fg_tp)
         self.m.add_child(folium.LayerControl())
