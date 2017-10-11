@@ -7,7 +7,6 @@ import webbrowser
 import pygeoj as pgj
 from geographiclib.geodesic import Geodesic
 from shapely.geometry import Point, Polygon
-from pyroutelib3 import Router
 import osrm
 osrm.RequestConfig.host = "router.project-osrm.org"
 
@@ -130,6 +129,7 @@ class Map():
         p2 = osrm.Point(latitude=coords[1][0], longitude=coords[1][1])
 
         result = osrm.simple_route( p1, p2, output='route', overview="full", geometry='wkt')
+        print(result[0]['distance'])
         list_coords = result[0]['geometry'].split(',')
         for i in range(0,len(list_coords)):
             if i == 0:
@@ -142,14 +142,40 @@ class Map():
             list_coords[i][1] = temp
         folium.PolyLine(list_coords).add_to(self.m)
 
+    def calc_adjacency_matrix(self,data,size):
+        length = data.__len__()
+        asj_matrix = []
+        for i in range(0,length):
+            temp = []
+            for j in range(0,length):
+                if j <= i:
+                    temp.append(0)
+                else:
+                    p1 = self.get_new_coord(data.get_feature(i).geometry.coordinates[0][0],135,size*(2**0.5)/2)
+                    p2 = self.get_new_coord(data.get_feature(j).geometry.coordinates[0][0],135,size*(2**0.5)/2)
+                    temp.append(self.calc_distance([p1,p2]))
+            asj_matrix.append(temp)
+
+
+        for i in asj_matrix:
+            print(i)
+
+    def calc_distance(self,coords):
+        p1 = osrm.Point(latitude=coords[0][0], longitude=coords[0][1])
+        p2 = osrm.Point(latitude=coords[1][0], longitude=coords[1][1])
+
+        result = osrm.simple_route(p1, p2, output='route', overview="full", geometry='wkt')
+        return float(result[0]['distance'])
+
     def main(self):
         self.draw_city_boundary(self.boundary,self.fg_cc)
         #self.draw_rivers()
-        #self.generate_city_grid(self.fg_cc,self.m,2500)
+        self.generate_city_grid(self.fg_cc,self.m,10000)
         self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
         self.city_grid_l = self.remove_null_cells(self.city_grid_l)
         self.draw_city_grid(self.city_grid_l, self.fg_grid)
-        self.generate_route([ self.city_grid_l.get_feature(0).geometry.coordinates[0][2],self.city_grid_l.get_feature(11).geometry.coordinates[0][2]])
+        self.calc_adjacency_matrix(self.city_grid_l,10000)
+        #self.generate_route([ self.city_grid_l.get_feature(0).geometry.coordinates[0][2],self.city_grid_l.get_feature(11).geometry.coordinates[0][2]])
         #self.draw_city_district(self.admins_geojs,self.fg_cd)
         #self.draw_transport_points(self.tp_geojs,self.fg_tp)
         self.m.add_child(folium.LayerControl())
