@@ -7,6 +7,7 @@ import webbrowser
 import pygeoj as pgj
 from geographiclib.geodesic import Geodesic
 from shapely.geometry import Point, Polygon
+import numpy as np
 import osrm
 osrm.RequestConfig.host = "router.project-osrm.org"
 
@@ -148,17 +149,18 @@ class Map():
         for i in range(0,length):
             temp = []
             for j in range(0,length):
-                if j <= i:
-                    temp.append(0)
-                else:
+                if j != i:
                     p1 = self.get_new_coord(data.get_feature(i).geometry.coordinates[0][0],135,size*(2**0.5)/2)
                     p2 = self.get_new_coord(data.get_feature(j).geometry.coordinates[0][0],135,size*(2**0.5)/2)
                     temp.append(self.calc_distance([p1,p2]))
             asj_matrix.append(temp)
 
-
+        self.calc_grad_eval_con_cells(asj_matrix)
+        output_file = open('./data/adjacency_matrix.txt', 'w+')
         for i in asj_matrix:
-            print(i)
+            for j in i:
+                output_file.write(str(j) + '\t')
+            output_file.write('\n')
 
     def calc_distance(self,coords):
         p1 = osrm.Point(latitude=coords[0][0], longitude=coords[0][1])
@@ -167,10 +169,28 @@ class Map():
         result = osrm.simple_route(p1, p2, output='route', overview="full", geometry='wkt')
         return float(result[0]['distance'])
 
+    def calc_grad_eval_con_cells(self,matrix):
+        eval_cells = []
+        matrix = np.array(matrix)
+        grad_min = matrix.min()
+        grad_max = matrix.max()
+        for i in matrix:
+            i = np.array(i)
+            temp = []
+            eval_cells.append(i.mean())
+        grad = np.linspace(grad_min,grad_max,11)
+        con_cells = []
+        for i in eval_cells:
+            for j in range(1,len(grad)):
+                if i <= grad[j]:
+                    con_cells.append(j)
+                    break
+        print(grad_min,grad_max,grad,con_cells)
+
     def main(self):
         self.draw_city_boundary(self.boundary,self.fg_cc)
         #self.draw_rivers()
-        self.generate_city_grid(self.fg_cc,self.m,10000)
+        #self.generate_city_grid(self.fg_cc,self.m,10000)
         self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
         self.city_grid_l = self.remove_null_cells(self.city_grid_l)
         self.draw_city_grid(self.city_grid_l, self.fg_grid)
