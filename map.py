@@ -18,6 +18,8 @@ from osrm_routes import osrm_routes
 
 class Map():
     def __init__(self):
+        self.colors_grad = ["#E50023","#E01F00","#DC6000","#D89E00","#CDD400","#8CCF00","#4CCB00","#10C700","#00C32A","#00BF62"]
+
         self.m = folium.Map(location=[ 48.747316, 44.51088], zoom_start=10)
 
         self.boundary = pgj.load(filepath="./data/boundary_gjs.geojson")
@@ -89,7 +91,7 @@ class Map():
             pl = folium.GeoJson(gj, style_function=lambda x: {
                 'color': x['properties']['stroke'],
                 'fillColor': x['properties']['fill_color'],
-                'opacity': 1,
+                'opacity': 0,
                 'fillOpacity': 0.5
             })
             pl.add_child(folium.Popup(str(gj['properties']['prestige'])))
@@ -209,9 +211,13 @@ class Map():
         for i in eval_cells:
             for j in range(1,len(grad)):
                 if i <= grad[j]:
-                    con_cells.append(j)
+                    con_cells.append(10-j)
                     break
-        print(grad_min,grad_max,grad,con_cells)
+
+        for i in range(0,len(con_cells)):
+            self.city_grid_l.__dict__['_data']['features'][i]['properties']['prestige'] = str(self.city_grid_l.__dict__['_data']['features'][i]['properties']['prestige']) + ' ' + str(con_cells[i])
+            self.city_grid_l.__dict__['_data']['features'][i]['properties']['fill_color'] = self.colors_grad[con_cells[i]]
+        print(grad_min,grad_max,grad,con_cells, len(con_cells),eval_cells)
 
     def calc_grad_eval_con_cell(self, matrix):
         matrix_temp = []
@@ -232,10 +238,11 @@ class Map():
             for j in i:
                 for k in range(1, len(grad)):
                     if j <= grad[k]:
-                        temp.append(k)
+                        temp.append(10-k)
                         break
             con_cells.append(temp)
-        print(con_cells)
+        for i in range(0,len(con_cells)):
+            self.city_grid_l.__dict__['_data']['features'][i]['properties']['prestige'] = str(con_cells[i])
 
     def main(self):
         self.draw_city_boundary(self.boundary,self.fg_cc)
@@ -243,11 +250,12 @@ class Map():
         #self.generate_city_grid(self.fg_cc,self.m,10000)
         self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
         self.city_grid_l = self.remove_null_cells(self.city_grid_l)
-        self.draw_city_grid(self.city_grid_l, self.fg_grid)
+
         self.calc_adjacency_matrix(self.city_grid_l,10000)
 
         #print(osrm_routes.get_distante(points='13.388860,52.517037;13.397634,52.529407'))
         #self.generate_route([ self.city_grid_l.get_feature(0).geometry.coordinates[0][2],self.city_grid_l.get_feature(11).geometry.coordinates[0][2]])
+        self.draw_city_grid(self.city_grid_l, self.fg_grid)
         #self.draw_city_district(self.admins_geojs,self.fg_cd)
         #self.draw_transport_points(self.tp_geojs,self.fg_tp)
         self.m.add_child(folium.LayerControl())
