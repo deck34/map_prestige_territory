@@ -8,8 +8,13 @@ import pygeoj as pgj
 from geographiclib.geodesic import Geodesic
 from shapely.geometry import Point, Polygon
 import numpy as np
-import osrm
-osrm.RequestConfig.host = "router.project-osrm.org"
+
+from pyroutelib3 import Router
+from osrm_routes import osrm_routes
+
+#import osrm
+#osrm.RequestConfig.host = 'router.project-osrm.org'
+
 
 class Map():
     def __init__(self):
@@ -84,7 +89,7 @@ class Map():
             pl = folium.GeoJson(gj, style_function=lambda x: {
                 'color': x['properties']['stroke'],
                 'fillColor': x['properties']['fill_color'],
-                'opacity': 0,
+                'opacity': 1,
                 'fillOpacity': 0.5
             })
             pl.add_child(folium.Popup(str(gj['properties']['prestige'])))
@@ -149,12 +154,15 @@ class Map():
         for i in range(0,length):
             temp = []
             for j in range(0,length):
-                if j != i:
+                if j == i:
+                    temp.append(0)
+                else:
                     p1 = self.get_new_coord(data.get_feature(i).geometry.coordinates[0][0],135,size*(2**0.5)/2)
                     p2 = self.get_new_coord(data.get_feature(j).geometry.coordinates[0][0],135,size*(2**0.5)/2)
                     temp.append(self.calc_distance([p1,p2]))
             asj_matrix.append(temp)
 
+        self.calc_grad_eval_con_cell(asj_matrix)
         self.calc_grad_eval_con_cells(asj_matrix)
         output_file = open('./data/adjacency_matrix.txt', 'w+')
         for i in asj_matrix:
@@ -163,15 +171,33 @@ class Map():
             output_file.write('\n')
 
     def calc_distance(self,coords):
-        p1 = osrm.Point(latitude=coords[0][0], longitude=coords[0][1])
-        p2 = osrm.Point(latitude=coords[1][0], longitude=coords[1][1])
-
-        result = osrm.simple_route(p1, p2, output='route', overview="full", geometry='wkt')
-        return float(result[0]['distance'])
+        # p1 = osrm.Point(latitude=coords[0][0], longitude=coords[0][1])
+        # p2 = osrm.Point(latitude=coords[1][0], longitude=coords[1][1])
+        #
+        # result = osrm.simple_route(p1, p2, output='route', overview="full", geometry='wkt')
+        distance = osrm_routes.get_distante(points=''+str(coords[0][0])+','+str(coords[0][1])+';'+str(coords[1][0])+','+str(coords[1][1]))
+        return distance #float(result[0]['distance'])
+        # router = Router("car")
+        # start = router.data.findNode(coords[0][1],coords[0][0])
+        # end = router.data.findNode(coords[1][1],coords[1][0])
+        # print(start)
+        # print(end)
+        # status, route = router.doRoute(start,end)
+        # print(status)
+        # print(route)
 
     def calc_grad_eval_con_cells(self,matrix):
         eval_cells = []
-        matrix = np.array(matrix)
+        matrix_temp = []
+        for i in matrix:
+            temp = []
+            for j in i:
+                if j !=0:
+                    temp.append(j)
+            matrix_temp.append(temp)
+
+        matrix = np.array(matrix_temp)
+
         grad_min = matrix.min()
         grad_max = matrix.max()
         for i in matrix:
@@ -187,6 +213,30 @@ class Map():
                     break
         print(grad_min,grad_max,grad,con_cells)
 
+    def calc_grad_eval_con_cell(self, matrix):
+        matrix_temp = []
+        for i in matrix:
+            temp = []
+            for j in i:
+                if j != 0:
+                    temp.append(j)
+            matrix_temp.append(temp)
+
+        matrix = np.array(matrix_temp)
+        grad_min = matrix.min()
+        grad_max = matrix.max()
+        grad = np.linspace(grad_min, grad_max, 11)
+        con_cells = []
+        for i in matrix:
+            temp = []
+            for j in i:
+                for k in range(1, len(grad)):
+                    if j <= grad[k]:
+                        temp.append(k)
+                        break
+            con_cells.append(temp)
+        print(con_cells)
+
     def main(self):
         self.draw_city_boundary(self.boundary,self.fg_cc)
         #self.draw_rivers()
@@ -195,6 +245,8 @@ class Map():
         self.city_grid_l = self.remove_null_cells(self.city_grid_l)
         self.draw_city_grid(self.city_grid_l, self.fg_grid)
         self.calc_adjacency_matrix(self.city_grid_l,10000)
+
+        #print(osrm_routes.get_distante(points='13.388860,52.517037;13.397634,52.529407'))
         #self.generate_route([ self.city_grid_l.get_feature(0).geometry.coordinates[0][2],self.city_grid_l.get_feature(11).geometry.coordinates[0][2]])
         #self.draw_city_district(self.admins_geojs,self.fg_cd)
         #self.draw_transport_points(self.tp_geojs,self.fg_tp)
