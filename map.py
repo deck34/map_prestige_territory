@@ -164,7 +164,6 @@ class Map():
                     temp.append(self.calc_distance([p1,p2]))
             asj_matrix.append(temp)
 
-        self.calc_grad_eval_con_cell(asj_matrix)
         self.calc_grad_eval_con_cells(asj_matrix)
         output_file = open('./data/adjacency_matrix.txt', 'w+')
         for i in asj_matrix:
@@ -202,55 +201,36 @@ class Map():
 
         grad_min = matrix.min()
         grad_max = matrix.max()
-        for i in matrix:
-            i = np.array(i)
-            temp = []
-            eval_cells.append(i.mean())
-        grad = np.linspace(grad_min,grad_max,11)
-        con_cells = []
-        for i in eval_cells:
-            for j in range(1,len(grad)):
-                if i <= grad[j]:
-                    con_cells.append(10-j)
-                    break
-
-        for i in range(0,len(con_cells)):
-            self.city_grid_l.__dict__['_data']['features'][i]['properties']['prestige'] = str(self.city_grid_l.__dict__['_data']['features'][i]['properties']['prestige']) + ' ' + str(con_cells[i])
-            self.city_grid_l.__dict__['_data']['features'][i]['properties']['fill_color'] = self.colors_grad[con_cells[i]]
-        print(grad_min,grad_max,grad,con_cells, len(con_cells),eval_cells)
-
-    def calc_grad_eval_con_cell(self, matrix):
-        matrix_temp = []
-        for i in matrix:
-            temp = []
-            for j in i:
-                if j != 0:
-                    temp.append(j)
-            matrix_temp.append(temp)
-
-        matrix = np.array(matrix_temp)
-        grad_min = matrix.min()
-        grad_max = matrix.max()
         grad = np.linspace(grad_min, grad_max, 11)
-        con_cells = []
+        index = 0
         for i in matrix:
+            i_ = np.array(i)
             temp = []
+
             for j in i:
                 for k in range(1, len(grad)):
                     if j <= grad[k]:
                         temp.append(10-k)
                         break
-            con_cells.append(temp)
-        for i in range(0,len(con_cells)):
-            self.city_grid_l.__dict__['_data']['features'][i]['properties']['prestige'] = str(con_cells[i])
+            self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(temp)
+
+            for j in range(1,len(grad)):
+                if i_.mean() <= grad[j]:
+                    self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(
+                        self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige']) + ' ' + str(
+                        10 - j)
+                    self.city_grid_l.__dict__['_data']['features'][index]['properties']['fill_color'] = self.colors_grad[
+                        10 - j]
+                    break
+            index += 1
 
     def main(self):
         self.draw_city_boundary(self.boundary,self.fg_cc)
         #self.draw_rivers()
-        #self.generate_city_grid(self.fg_cc,self.m,10000)
+        # self.generate_city_grid(self.fg_cc,self.m,10000)
         self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
-        self.city_grid_l = self.remove_null_cells(self.city_grid_l)
-
+        # self.city_grid_l = self.remove_null_cells(self.city_grid_l)
+        # self.city_grid_l.save("./data/city_grid.geojson")
         self.calc_adjacency_matrix(self.city_grid_l,10000)
 
         #print(osrm_routes.get_distante(points='13.388860,52.517037;13.397634,52.529407'))
