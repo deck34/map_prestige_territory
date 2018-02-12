@@ -1,15 +1,16 @@
 import os
 import folium
-import sys
-from geodata import *
-from folium.features import DivIcon
-import webbrowser
+import time
+# import sys
+# from geodata import *
+# from folium.features import DivIcon
+# import webbrowser
 import pygeoj as pgj
 from geographiclib.geodesic import Geodesic
 from shapely.geometry import Point, Polygon
 import numpy as np
 
-from pyroutelib3 import Router
+# from pyroutelib3 import Router
 from osrm_routes import osrm_routes
 
 #import osrm
@@ -153,6 +154,7 @@ class Map():
     def calc_adjacency_matrix(self,data,size):
         length = data.__len__()
         asj_matrix = []
+        start = time.time()
         for i in range(0,length):
             temp = []
             for j in range(0,length):
@@ -163,8 +165,10 @@ class Map():
                     p2 = self.get_new_coord(data.get_feature(j).geometry.coordinates[0][0],135,size*(2**0.5)/2)
                     temp.append(self.calc_distance([p1,p2]))
             asj_matrix.append(temp)
-
+        print("Расчет матрицы смежности", time.time()-start)
+        start = time.time()
         self.calc_grad_eval_con_cells(asj_matrix)
+        print("Оценка доступноти", time.time() - start)
         output_file = open('./data/adjacency_matrix.txt', 'w+')
         for i in asj_matrix:
             for j in i:
@@ -190,12 +194,14 @@ class Map():
     def calc_grad_eval_con_cells(self,matrix):
         eval_cells = []
         matrix_temp = []
+        start = time.time()
         for i in matrix:
             temp = []
             for j in i:
                 if j !=0:
                     temp.append(j)
             matrix_temp.append(temp)
+        print("Удаление нулевых значений из матрицы смежности", time.time() - start)
 
         matrix = np.array(matrix_temp)
 
@@ -227,11 +233,13 @@ class Map():
     def main(self):
         self.draw_city_boundary(self.boundary,self.fg_cc)
         #self.draw_rivers()
-        # self.generate_city_grid(self.fg_cc,self.m,10000)
+        # start = time.time()
+        # self.generate_city_grid(self.fg_cc,self.m,5000)
+        # print("Генерация сетки", time.time() - start)
         self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
         # self.city_grid_l = self.remove_null_cells(self.city_grid_l)
         # self.city_grid_l.save("./data/city_grid.geojson")
-        self.calc_adjacency_matrix(self.city_grid_l,10000)
+        self.calc_adjacency_matrix(self.city_grid_l,5000)
 
         #print(osrm_routes.get_distante(points='13.388860,52.517037;13.397634,52.529407'))
         #self.generate_route([ self.city_grid_l.get_feature(0).geometry.coordinates[0][2],self.city_grid_l.get_feature(11).geometry.coordinates[0][2]])
