@@ -12,7 +12,12 @@ class osrm_routes():
         #responce = request.urlopen(url).read()
         responce = requests.get(url)
         data = responce.json()
-        return data['routes'][0]['distance']
+        t = 0
+        try:
+            t = data['routes'][0]['distance']
+        except  Exception:
+            print(data)
+        return t
 
 
 

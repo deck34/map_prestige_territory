@@ -9,15 +9,38 @@ import pygeoj as pgj
 from geographiclib.geodesic import Geodesic
 from shapely.geometry import Point, Polygon
 import numpy as np
+from threading import Thread
 
 # from pyroutelib3 import Router
 from osrm_routes import osrm_routes
 
 #import osrm
 #osrm.RequestConfig.host = 'router.project-osrm.org'
+adj_matrix = np.zeros((5,5))
+class RequesterThread(Thread):
+    def __init__(self, data, size,index):
+        """Инициализация потока"""
+        Thread.__init__(self)
+        self.data = data
+        self.size = size
+        self.index = index
 
+    def run(self):
+        """Запуск потока"""
+        length = self.data.__len__()
+        temp = []
+        for j in range(0, length):
+            if j == self.index:
+                temp.append(0)
+            else:
+                radius = self.size * (2 ** 0.5) / 2
+                p1 = Map_prestige.get_new_coord(self,(self.data.get_feature(self.index).geometry.coordinates[0][0]), 135, radius)
+                p2 = Map_prestige.get_new_coord(self,(self.data.get_feature(j).geometry.coordinates[0][0]), 135, radius)
+                temp.append(Map_prestige.calc_distance(self,[p1, p2]))
+        adj_matrix[self.index] = temp
+        # adj_matrix.append(temp)
 
-class Map():
+class Map_prestige():
     def __init__(self):
         self.colors_grad = ["#E50023","#E01F00","#DC6000","#D89E00","#CDD400","#8CCF00","#4CCB00","#10C700","#00C32A","#00BF62"]
 
@@ -153,24 +176,27 @@ class Map():
 
     def calc_adjacency_matrix(self,data,size):
         length = data.__len__()
-        asj_matrix = []
+        global adj_matrix
+        adj_matrix = np.zeros((length,length))
+        threads = []
+
         start = time.time()
         for i in range(0,length):
-            temp = []
-            for j in range(0,length):
-                if j == i:
-                    temp.append(0)
-                else:
-                    p1 = self.get_new_coord(data.get_feature(i).geometry.coordinates[0][0],135,size*(2**0.5)/2)
-                    p2 = self.get_new_coord(data.get_feature(j).geometry.coordinates[0][0],135,size*(2**0.5)/2)
-                    temp.append(self.calc_distance([p1,p2]))
-            asj_matrix.append(temp)
+            thread = RequesterThread(data,size,i)
+            thread.setDaemon(True)
+            threads.append(thread)
+            thread.start()
+
+        for t in threads:
+            t.join()
+
         print("Расчет матрицы смежности", time.time()-start)
+        # print(adj_matrix)
         start = time.time()
-        self.calc_grad_eval_con_cells(asj_matrix)
+        self.calc_grad_eval_con_cells(adj_matrix)
         print("Оценка доступноти", time.time() - start)
         output_file = open('./data/adjacency_matrix.txt', 'w+')
-        for i in asj_matrix:
+        for i in adj_matrix:
             for j in i:
                 output_file.write(str(j) + '\t')
             output_file.write('\n')
@@ -232,13 +258,15 @@ class Map():
 
     def main(self):
         self.draw_city_boundary(self.boundary,self.fg_cc)
-        #self.draw_rivers()
-        # start = time.time()
-        # self.generate_city_grid(self.fg_cc,self.m,5000)
-        # print("Генерация сетки", time.time() - start)
+        # self.draw_rivers()
+        start = time.time()
+        self.generate_city_grid(self.fg_cc,self.m,5000)
+        print("Генерация сетки", time.time() - start)
         self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
-        # self.city_grid_l = self.remove_null_cells(self.city_grid_l)
-        # self.city_grid_l.save("./data/city_grid.geojson")
+        start = time.time()
+        self.city_grid_l = self.remove_null_cells(self.city_grid_l)
+        print("Удаление пустых ячеек", time.time() - start)
+        self.city_grid_l.save("./data/city_grid.geojson")
         self.calc_adjacency_matrix(self.city_grid_l,5000)
 
         #print(osrm_routes.get_distante(points='13.388860,52.517037;13.397634,52.529407'))
@@ -251,5 +279,5 @@ class Map():
         #webbrowser.open('map.html', new=2)
 
 if __name__ == '__main__':
-    app = Map()
+    app = Map_prestige()
     app.main()
