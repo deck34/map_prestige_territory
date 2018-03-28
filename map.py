@@ -18,31 +18,36 @@ from osrm_routes import osrm_routes
 #osrm.RequestConfig.host = 'router.project-osrm.org'
 adj_matrix = np.zeros((5,5))
 class RequesterThread(Thread):
-    def __init__(self, data, size,index):
+    def __init__(self, data, size,index,range):
         """Инициализация потока"""
         Thread.__init__(self)
         self.data = data
         self.size = size
         self.index = index
+        self.range = range
 
     def run(self):
         """Запуск потока"""
         length = self.data.__len__()
-        temp = []
-        for j in range(0, length):
-            if j == self.index:
-                temp.append(0)
-            else:
-                radius = self.size * (2 ** 0.5) / 2
-                p1 = Map_prestige.get_new_coord(self,(self.data.get_feature(self.index).geometry.coordinates[0][0]), 135, radius)
-                p2 = Map_prestige.get_new_coord(self,(self.data.get_feature(j).geometry.coordinates[0][0]), 135, radius)
-                temp.append(Map_prestige.calc_distance(self,[p1, p2]))
-        adj_matrix[self.index] = temp
-        # adj_matrix.append(temp)
+        max = self.index+self.range
+        if self.index+self.range > length:
+            max = length
+        for i in range(self.index,max):
+            temp = []
+            for j in range(0, length):
+                if j == i:
+                    temp.append(0)
+                else:
+                    radius = self.size * (2 ** 0.5) / 2
+                    p1 = Map_prestige.get_new_coord(self,(self.data.get_feature(i).geometry.coordinates[0][0]), 135, radius)
+                    p2 = Map_prestige.get_new_coord(self,(self.data.get_feature(j).geometry.coordinates[0][0]), 135, radius)
+                    temp.append(Map_prestige.calc_distance(self,[p1, p2]))
+            adj_matrix[i] = temp
 
 class Map_prestige():
     def __init__(self):
         self.colors_grad = ["#E50023","#E01F00","#DC6000","#D89E00","#CDD400","#8CCF00","#4CCB00","#10C700","#00C32A","#00BF62"]
+        self.stepinthread = 1
 
         self.m = folium.Map(location=[ 48.747316, 44.51088], zoom_start=10)
 
@@ -175,14 +180,16 @@ class Map_prestige():
         folium.PolyLine(list_coords).add_to(self.m)
 
     def calc_adjacency_matrix(self,data,size):
+        #TODO считывание матрицы с файла
         length = data.__len__()
         global adj_matrix
         adj_matrix = np.zeros((length,length))
         threads = []
+        #TODO self.stepinthread динмическое кол-во итераций в одном потоке
 
         start = time.time()
-        for i in range(0,length):
-            thread = RequesterThread(data,size,i)
+        for i in range(0,length,self.stepinthread):
+            thread = RequesterThread(data,size,i,self.stepinthread)
             thread.setDaemon(True)
             threads.append(thread)
             thread.start()
@@ -260,14 +267,14 @@ class Map_prestige():
         self.draw_city_boundary(self.boundary,self.fg_cc)
         # self.draw_rivers()
         start = time.time()
-        self.generate_city_grid(self.fg_cc,self.m,5000)
+        self.generate_city_grid(self.fg_cc,self.m,2500)
         print("Генерация сетки", time.time() - start)
         self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
         start = time.time()
         self.city_grid_l = self.remove_null_cells(self.city_grid_l)
         print("Удаление пустых ячеек", time.time() - start)
         self.city_grid_l.save("./data/city_grid.geojson")
-        self.calc_adjacency_matrix(self.city_grid_l,5000)
+        self.calc_adjacency_matrix(self.city_grid_l,2500)
 
         #print(osrm_routes.get_distante(points='13.388860,52.517037;13.397634,52.529407'))
         #self.generate_route([ self.city_grid_l.get_feature(0).geometry.coordinates[0][2],self.city_grid_l.get_feature(11).geometry.coordinates[0][2]])

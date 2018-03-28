@@ -1,3 +1,13 @@
+from osmread import parse_file, Way
+
+tags = []
+count = 0
+for entity in parse_file('data/crimean.osm.pbf'):
+    if entity.tags not in tags:
+        tags.append(entity.tags)
+        count += 1
+print(count)
+
 #----------------------------------------------
 #
 # def get_minimum_distance(self, point, points):
