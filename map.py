@@ -41,13 +41,13 @@ class RequesterThread(Thread):
                     radius = self.size * (2 ** 0.5) / 2
                     p1 = Map_prestige.get_new_coord(self,(self.data.get_feature(i).geometry.coordinates[0][0]), 135, radius)
                     p2 = Map_prestige.get_new_coord(self,(self.data.get_feature(j).geometry.coordinates[0][0]), 135, radius)
-                    temp.append(Map_prestige.calc_distance(self,[p1, p2]))
+                    temp.append(float(Map_prestige.calc_distance(self,[p1, p2])))
             adj_matrix[i] = temp
 
 class Map_prestige():
     def __init__(self):
         self.colors_grad = ["#E50023","#E01F00","#DC6000","#D89E00","#CDD400","#8CCF00","#4CCB00","#10C700","#00C32A","#00BF62"]
-        self.stepinthread = 1
+        self.stepinthread = 35
 
         self.m = folium.Map(location=[ 48.747316, 44.51088], zoom_start=10)
 
@@ -194,6 +194,7 @@ class Map_prestige():
                 temp = i.split('\n')
                 temp = temp[0].rstrip()
                 mas.append(temp.split('\t'))
+
             for i in range(0, length):
                 for j in range(0, length):
                     adj_matrix[i][j] = float(mas[i][j])
@@ -211,14 +212,17 @@ class Map_prestige():
                 t.join()
 
         print("Расчет\\считывание матрицы смежности", time.time()-start)
+
+        if read_matrix != True:
+            output_file = open('./data/adjacency_matrix.txt', 'w+')
+            for i in adj_matrix:
+                for j in i:
+                    output_file.write(str(j) + '\t')
+                output_file.write('\n')
+
         start = time.time()
         self.calc_grad_eval_con_cells(adj_matrix)
         print("Оценка доступноти", time.time() - start)
-        output_file = open('./data/adjacency_matrix.txt', 'w+')
-        for i in adj_matrix:
-            for j in i:
-                output_file.write(str(j) + '\t')
-            output_file.write('\n')
 
     def calc_distance(self,coords):
         # p1 = osrm.Point(latitude=coords[0][0], longitude=coords[0][1])
@@ -249,9 +253,14 @@ class Map_prestige():
         print("Удаление нулевых значений из матрицы смежности", time.time() - start)
 
         matrix = np.array(matrix_temp)
+        temp_min = []
+        temp_max = []
+        for i in matrix:
+            temp_min.append(np.min(i))
+            temp_max.append(np.max(i))
+        grad_min = np.min(temp_min)
+        grad_max = np.max(temp_max)
 
-        grad_min = matrix.min()
-        grad_max = matrix.max()
         grad = np.linspace(grad_min, grad_max, 11)
         index = 0
         for i in matrix:
@@ -279,14 +288,14 @@ class Map_prestige():
         self.draw_city_boundary(self.boundary,self.fg_cc)
         # self.draw_rivers()
         start = time.time()
-        self.generate_city_grid(self.fg_cc,self.m,10000)
+        self.generate_city_grid(self.fg_cc,self.m,2500)
         print("Генерация сетки", time.time() - start)
         self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
         start = time.time()
         self.city_grid_l = self.remove_null_cells(self.city_grid_l)
         print("Удаление пустых ячеек", time.time() - start)
         self.city_grid_l.save("./data/city_grid.geojson")
-        self.calc_adjacency_matrix(self.city_grid_l,10000,True)
+        self.calc_adjacency_matrix(self.city_grid_l,2500,True)
 
         #print(osrm_routes.get_distante(points='13.388860,52.517037;13.397634,52.529407'))
         #self.generate_route([ self.city_grid_l.get_feature(0).geometry.coordinates[0][2],self.city_grid_l.get_feature(11).geometry.coordinates[0][2]])
