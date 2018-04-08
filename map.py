@@ -179,26 +179,38 @@ class Map_prestige():
             list_coords[i][1] = temp
         folium.PolyLine(list_coords).add_to(self.m)
 
-    def calc_adjacency_matrix(self,data,size):
-        #TODO считывание матрицы с файла
+    def calc_adjacency_matrix(self,data,size,read_matrix):
+
         length = data.__len__()
         global adj_matrix
         adj_matrix = np.zeros((length,length))
-        threads = []
-        #TODO self.stepinthread динмическое кол-во итераций в одном потоке
-
         start = time.time()
-        for i in range(0,length,self.stepinthread):
-            thread = RequesterThread(data,size,i,self.stepinthread)
-            thread.setDaemon(True)
-            threads.append(thread)
-            thread.start()
 
-        for t in threads:
-            t.join()
+        if read_matrix:
+            # TODO считывание матрицы с файла
+            txt = open('./data/adjacency_matrix.txt').readlines()
+            mas = []
+            for i in txt:
+                temp = i.split('\n')
+                temp = temp[0].rstrip()
+                mas.append(temp.split('\t'))
+            for i in range(0, length):
+                for j in range(0, length):
+                    adj_matrix[i][j] = float(mas[i][j])
+        else:
+            threads = []
+            #TODO self.stepinthread динмическое кол-во итераций в одном потоке
 
-        print("Расчет матрицы смежности", time.time()-start)
-        # print(adj_matrix)
+            for i in range(0,length,self.stepinthread):
+                thread = RequesterThread(data,size,i,self.stepinthread)
+                thread.setDaemon(True)
+                threads.append(thread)
+                thread.start()
+
+            for t in threads:
+                t.join()
+
+        print("Расчет\\считывание матрицы смежности", time.time()-start)
         start = time.time()
         self.calc_grad_eval_con_cells(adj_matrix)
         print("Оценка доступноти", time.time() - start)
@@ -267,14 +279,14 @@ class Map_prestige():
         self.draw_city_boundary(self.boundary,self.fg_cc)
         # self.draw_rivers()
         start = time.time()
-        self.generate_city_grid(self.fg_cc,self.m,2500)
+        self.generate_city_grid(self.fg_cc,self.m,10000)
         print("Генерация сетки", time.time() - start)
         self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
         start = time.time()
         self.city_grid_l = self.remove_null_cells(self.city_grid_l)
         print("Удаление пустых ячеек", time.time() - start)
         self.city_grid_l.save("./data/city_grid.geojson")
-        self.calc_adjacency_matrix(self.city_grid_l,2500)
+        self.calc_adjacency_matrix(self.city_grid_l,10000,True)
 
         #print(osrm_routes.get_distante(points='13.388860,52.517037;13.397634,52.529407'))
         #self.generate_route([ self.city_grid_l.get_feature(0).geometry.coordinates[0][2],self.city_grid_l.get_feature(11).geometry.coordinates[0][2]])

@@ -1,12 +1,23 @@
-from osmread import parse_file, Way
+import re, string
 
-tags = []
-count = 0
-for entity in parse_file('data/crimean.osm.pbf'):
-    if entity.tags not in tags:
-        tags.append(entity.tags)
-        count += 1
-print(count)
+txt = open('data\\adjacency_matrix_example.txt').readlines()
+mas = []
+for i in txt:
+    temp = i.split('\n')
+    temp = temp[0].rstrip()
+    mas.append(temp.split('\t'))
+# print(mas[0][mas.__len__()])
+for i in mas:
+    print(i)
+# from osmread import parse_file, Way
+#
+# tags = []
+# count = 0
+# for entity in parse_file('data/crimean.osm.pbf'):
+#     if entity.tags not in tags:
+#         tags.append(entity.tags)
+#         count += 1
+# print(count)
 
 #----------------------------------------------
 #
