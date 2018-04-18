@@ -17,6 +17,7 @@ class osrm_routes():
             t = data['routes'][0]['distance']
         except  Exception:
             print(data)
+            t = -1
         return t
 
 

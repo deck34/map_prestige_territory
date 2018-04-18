@@ -47,7 +47,7 @@ class RequesterThread(Thread):
 class Map_prestige():
     def __init__(self):
         self.colors_grad = ["#E50023","#E01F00","#DC6000","#D89E00","#CDD400","#8CCF00","#4CCB00","#10C700","#00C32A","#00BF62"]
-        self.stepinthread = 35
+        self.stepinthread = 1
 
         self.m = folium.Map(location=[ 48.747316, 44.51088], zoom_start=10)
 
@@ -210,6 +210,7 @@ class Map_prestige():
 
             for t in threads:
                 t.join()
+
 
         print("Расчет\\считывание матрицы смежности", time.time()-start)
 
