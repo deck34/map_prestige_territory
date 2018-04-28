@@ -31,24 +31,42 @@ class RequesterThread(Thread):
         #Запуск потока
         length = self.data.__len__()
         max = self.index+self.range
-        if self.index+self.range > length:
-            max = length
-        for i in range(self.index,max):
-            temp = []
-            for j in range(0, length):
-                if j == i:
-                    temp.append(0)
-                else:
-                    radius = self.size * (2 ** 0.5) / 2
-                    p1 = Map_prestige.get_new_coord(self,(self.data.get_feature(i).geometry.coordinates[0][0]), 135, radius)
-                    p2 = Map_prestige.get_new_coord(self,(self.data.get_feature(j).geometry.coordinates[0][0]), 135, radius)
-                    temp.append(float(Map_prestige.calc_distance(self,[p1, p2])))
-            adj_matrix[i] = temp
+        if self.index+self.range > length*length:
+            max = length*length
+        i = int(self.index/length)
+        j = self.index - length*i
+        for k in range(self.index,max):
+            if j == i:
+                adj_matrix[0][k] = 0
+            else:
+                radius = self.size * (2 ** 0.5) / 2
+                p1 = Map_prestige.get_new_coord(self,(self.data.get_feature(i).geometry.coordinates[0][0]), 135, radius)
+                p2 = Map_prestige.get_new_coord(self,(self.data.get_feature(j).geometry.coordinates[0][0]), 135, radius)
+                adj_matrix[0][k] = float(Map_prestige.calc_distance(self,[p1, p2]))
+                # adj_matrix[0][k] = j
+            j += 1
+            if j == length:
+                i += 1
+                j = 0
+
+            # for i in range(self.index, max):
+            #     temp = []
+            #     for j in range(0, length):
+            #         if j == i:
+            #             temp.append(0)
+            #         else:
+            #             radius = self.size * (2 ** 0.5) / 2
+            #             p1 = Map_prestige.get_new_coord(self, (self.data.get_feature(i).geometry.coordinates[0][0]),
+            #                                             135, radius)
+            #             p2 = Map_prestige.get_new_coord(self, (self.data.get_feature(j).geometry.coordinates[0][0]),
+            #                                             135, radius)
+            #             temp.append(float(Map_prestige.calc_distance(self, [p1, p2])))
+            #     adj_matrix[i] = temp
 
 class Map_prestige():
     def __init__(self):
         self.colors_grad = ["#E50023","#E01F00","#DC6000","#D89E00","#CDD400","#8CCF00","#4CCB00","#10C700","#00C32A","#00BF62"]
-        self.stepinthread = 100
+        self.threads = 20
 
         self.m = folium.Map(location=[ 48.747316, 44.51088], zoom_start=10)
 
@@ -201,16 +219,20 @@ class Map_prestige():
                     adj_matrix[i][j] = float(mas[i][j])
         else:
             threads = []
-            #TODO self.stepinthread динмическое кол-во итераций в одном потоке
+            adj_matrix.shape = (1,length*length)
 
-            for i in range(0,length,self.stepinthread):
-                thread = RequesterThread(data,size,i,self.stepinthread)
+            step = round((length*length/self.threads))
+            for i in range(0,length*length,step):
+                thread = RequesterThread(data,size,i,step)
                 thread.setDaemon(True)
                 threads.append(thread)
                 thread.start()
 
             for t in threads:
                 t.join()
+            adj_matrix.shape = (length, length)
+            # print(adj_matrix)
+            # return
 
 
         print("Расчет\\считывание матрицы смежности", time.time()-start)
@@ -290,14 +312,15 @@ class Map_prestige():
         self.draw_city_boundary(self.boundary,self.fg_cc)
         # self.draw_rivers()
         start = time.time()
-        self.generate_city_grid(self.fg_cc,self.m,2500)
+        self.generate_city_grid(self.fg_cc,self.m,5000)
         print("Генерация сетки", time.time() - start)
         self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
         start = time.time()
         self.city_grid_l = self.remove_null_cells(self.city_grid_l)
         print("Удаление пустых ячеек", time.time() - start)
         self.city_grid_l.save("./data/city_grid.geojson")
-        self.calc_adjacency_matrix(self.city_grid_l,2500,False)
+        print("Количество ячеек", self.city_grid_l.__len__())
+        self.calc_adjacency_matrix(self.city_grid_l,5000,False)
 
         #print(osrm_routes.get_distante(points='13.388860,52.517037;13.397634,52.529407'))
         #self.generate_route([ self.city_grid_l.get_feature(0).geometry.coordinates[0][2],self.city_grid_l.get_feature(11).geometry.coordinates[0][2]])
