@@ -1,3 +1,4 @@
+# This Python file uses the following encoding: utf-8
 import os
 import folium
 import time
@@ -19,7 +20,7 @@ from osrm_routes import osrm_routes
 adj_matrix = np.zeros((5,5))
 class RequesterThread(Thread):
     def __init__(self, data, size,index,range):
-        """Инициализация потока"""
+        #Инициализация потока
         Thread.__init__(self)
         self.data = data
         self.size = size
@@ -27,7 +28,7 @@ class RequesterThread(Thread):
         self.range = range
 
     def run(self):
-        """Запуск потока"""
+        #Запуск потока
         length = self.data.__len__()
         max = self.index+self.range
         if self.index+self.range > length:
@@ -47,7 +48,7 @@ class RequesterThread(Thread):
 class Map_prestige():
     def __init__(self):
         self.colors_grad = ["#E50023","#E01F00","#DC6000","#D89E00","#CDD400","#8CCF00","#4CCB00","#10C700","#00C32A","#00BF62"]
-        self.stepinthread = 1
+        self.stepinthread = 100
 
         self.m = folium.Map(location=[ 48.747316, 44.51088], zoom_start=10)
 
@@ -55,13 +56,13 @@ class Map_prestige():
         self.fg_cc = folium.FeatureGroup(name="City contours(all)")
         self.m.add_child(self.fg_cc)
 
-        self.admins_geojs = pgj.load(filepath="./data/admin.geojson")
-        self.fg_cd = folium.FeatureGroup(name="City district")
-        self.m.add_child(self.fg_cd)
-
-        self.fg_tp = folium.FeatureGroup(name="Transport Points")
-        self.tp_geojs = pgj.load(filepath="./data/transport_points.geojson")
-        self.m.add_child(self.fg_tp)
+        # self.admins_geojs = pgj.load(filepath="./data/admin.geojson")
+        # self.fg_cd = folium.FeatureGroup(name="City district")
+        # self.m.add_child(self.fg_cd)
+        #
+        # self.fg_tp = folium.FeatureGroup(name="Transport Points")
+        # self.tp_geojs = pgj.load(filepath="./data/transport_points.geojson")
+        # self.m.add_child(self.fg_tp)
 
         self.fg_grid = folium.FeatureGroup(name="Grid")
         self.m.add_child(self.fg_grid)
@@ -151,33 +152,33 @@ class Map_prestige():
         distance = geod.Inverse(coords[0][0],coords[0][1],coords[1][0],coords[1][1])
         return float(distance['s12'])
 
-    def draw_rivers(self):
-        self.waterareas = pgj.load(filepath="./data/waterareas.geojson")
-        for gj in self.waterareas.__dict__['_data']['features']:
-            pl = folium.GeoJson(gj)
-            pl.add_to(self.m)
+    # def draw_rivers(self):
+    #     self.waterareas = pgj.load(filepath="./data/waterareas.geojson")
+    #     for gj in self.waterareas.__dict__['_data']['features']:
+    #         pl = folium.GeoJson(gj)
+    #         pl.add_to(self.m)
 
-    def generate_route(self,coords):
-
-        folium.Marker([coords[0][1],coords[0][0]]).add_to(self.m)
-        folium.Marker([coords[1][1], coords[1][0]]).add_to(self.m)
-
-        p1 = osrm.Point(latitude=coords[0][0], longitude=coords[0][1])
-        p2 = osrm.Point(latitude=coords[1][0], longitude=coords[1][1])
-
-        result = osrm.simple_route( p1, p2, output='route', overview="full", geometry='wkt')
-        print(result[0]['distance'])
-        list_coords = result[0]['geometry'].split(',')
-        for i in range(0,len(list_coords)):
-            if i == 0:
-                list_coords[i] = list_coords[i][list_coords[i].find('(')+1:]
-            if i == len(list_coords)-1:
-                list_coords[i] = list_coords[i][:list_coords[i].find(')')-1]
-            list_coords[i] = list_coords[i].split(' ')
-            temp = float(list_coords[i][0])
-            list_coords[i][0] = float(list_coords[i][1])
-            list_coords[i][1] = temp
-        folium.PolyLine(list_coords).add_to(self.m)
+    # def generate_route(self,coords):
+    #
+    #     folium.Marker([coords[0][1],coords[0][0]]).add_to(self.m)
+    #     folium.Marker([coords[1][1], coords[1][0]]).add_to(self.m)
+    #
+    #     p1 = osrm.Point(latitude=coords[0][0], longitude=coords[0][1])
+    #     p2 = osrm.Point(latitude=coords[1][0], longitude=coords[1][1])
+    #
+    #     result = osrm.simple_route( p1, p2, output='route', overview="full", geometry='wkt')
+    #     print(result[0]['distance'])
+    #     list_coords = result[0]['geometry'].split(',')
+    #     for i in range(0,len(list_coords)):
+    #         if i == 0:
+    #             list_coords[i] = list_coords[i][list_coords[i].find('(')+1:]
+    #         if i == len(list_coords)-1:
+    #             list_coords[i] = list_coords[i][:list_coords[i].find(')')-1]
+    #         list_coords[i] = list_coords[i].split(' ')
+    #         temp = float(list_coords[i][0])
+    #         list_coords[i][0] = float(list_coords[i][1])
+    #         list_coords[i][1] = temp
+    #     folium.PolyLine(list_coords).add_to(self.m)
 
     def calc_adjacency_matrix(self,data,size,read_matrix):
 
@@ -296,7 +297,7 @@ class Map_prestige():
         self.city_grid_l = self.remove_null_cells(self.city_grid_l)
         print("Удаление пустых ячеек", time.time() - start)
         self.city_grid_l.save("./data/city_grid.geojson")
-        self.calc_adjacency_matrix(self.city_grid_l,2500,True)
+        self.calc_adjacency_matrix(self.city_grid_l,2500,False)
 
         #print(osrm_routes.get_distante(points='13.388860,52.517037;13.397634,52.529407'))
         #self.generate_route([ self.city_grid_l.get_feature(0).geometry.coordinates[0][2],self.city_grid_l.get_feature(11).geometry.coordinates[0][2]])

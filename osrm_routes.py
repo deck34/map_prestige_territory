@@ -11,12 +11,14 @@ class osrm_routes():
         url = 'http://router.project-osrm.org/route/v1/driving/' + points + '?overview=false'
         #responce = request.urlopen(url).read()
         responce = requests.get(url)
-        data = responce.json()
+
         t = 0
+        data = ''
         try:
+            data = responce.json()
             t = data['routes'][0]['distance']
         except  Exception:
-            print(data)
+            print(responce.text)
             t = -1
         return t
 
