@@ -28,6 +28,7 @@ class RequesterThread(Thread):
         self.range = range
 
     def run(self):
+        print(Thread.getName(self), "start")
         #Запуск потока
         length = self.data.__len__()
         max = self.index+self.range
@@ -49,6 +50,7 @@ class RequesterThread(Thread):
                 i += 1
                 j = 0
 
+        print(Thread.getName(self), "finish")
             # for i in range(self.index, max):
             #     temp = []
             #     for j in range(0, length):
@@ -66,7 +68,7 @@ class RequesterThread(Thread):
 class Map_prestige():
     def __init__(self):
         self.colors_grad = ["#E50023","#E01F00","#DC6000","#D89E00","#CDD400","#8CCF00","#4CCB00","#10C700","#00C32A","#00BF62"]
-        self.threads = 20
+        self.threads = 100
 
         self.m = folium.Map(location=[ 48.747316, 44.51088], zoom_start=10)
 
@@ -312,7 +314,7 @@ class Map_prestige():
         self.draw_city_boundary(self.boundary,self.fg_cc)
         # self.draw_rivers()
         start = time.time()
-        self.generate_city_grid(self.fg_cc,self.m,5000)
+        self.generate_city_grid(self.fg_cc,self.m,1000)
         print("Генерация сетки", time.time() - start)
         self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
         start = time.time()
@@ -320,7 +322,8 @@ class Map_prestige():
         print("Удаление пустых ячеек", time.time() - start)
         self.city_grid_l.save("./data/city_grid.geojson")
         print("Количество ячеек", self.city_grid_l.__len__())
-        self.calc_adjacency_matrix(self.city_grid_l,5000,False)
+        print("Потоков", self.threads)
+        self.calc_adjacency_matrix(self.city_grid_l,1000,False)
 
         #print(osrm_routes.get_distante(points='13.388860,52.517037;13.397634,52.529407'))
         #self.generate_route([ self.city_grid_l.get_feature(0).geometry.coordinates[0][2],self.city_grid_l.get_feature(11).geometry.coordinates[0][2]])
