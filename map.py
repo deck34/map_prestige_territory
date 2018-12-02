@@ -12,6 +12,7 @@ from shapely.geometry import Point, Polygon
 import numpy as np
 from threading import Thread
 
+
 # from pyroutelib3 import Router
 from osrm_routes import osrm_routes
 
@@ -70,9 +71,12 @@ class Map_prestige():
         self.colors_grad = ["#E50023","#E01F00","#DC6000","#D89E00","#CDD400","#8CCF00","#4CCB00","#10C700","#00C32A","#00BF62"]
         self.threads = 10
 
-        self.m = folium.Map(location=[ 48.747316, 44.51088], zoom_start=10)
+        self.m = folium.Map(location=[ 48.747316, 44.51088], zoom_start=4)
 
-        self.boundary = pgj.load(filepath="./data/boundary_gjs.geojson")
+        self.boundary = pgj.load(filepath="./data/bounds.geojson")
+
+        # self.m = folium.Map(location=[float(self.boundary.bbox[0].replace(',','.')), float(self.boundary.bbox[1].replace(',','.'))], zoom_start=10)
+        # self.boundary = pgj.load(filepath="./data/boundary_gjs.geojson")
         self.fg_cc = folium.FeatureGroup(name="City contours(all)")
         self.m.add_child(self.fg_cc)
 
@@ -90,6 +94,7 @@ class Map_prestige():
     def draw_city_boundary(self,data,featuregroup):
         for gj in data.__dict__['_data']['features']:
             pl = folium.GeoJson(gj)
+            pl.add_child(folium.Popup(str(gj['properties']['name'])))
             pl.add_to(featuregroup)
 
     def draw_city_district(self,data,featuregroup):
@@ -109,10 +114,10 @@ class Map_prestige():
     def generate_city_grid(self,featuregroup_in,map_out,size):
         b = featuregroup_in.get_bounds()
 
-        lt_abs = [b[1][0], b[0][1]] #left-top
-        lb_abs = [b[0][0], b[0][1]] # left-bottom
-        rb_abs = [b[0][0], b[1][1]] # right-bottom
-        rt_abs = [b[1][0], b[1][1]] # right-top
+        lt_abs = [float(b[1][0]), float(b[0][1])] #left-top
+        lb_abs = [float(b[0][0]), float(b[0][1])] # left-bottom
+        rb_abs = [float(b[0][0]), float(b[1][1])] # right-bottom
+        rt_abs = [float(b[1][0]), float(b[1][1])] # right-top
 
         #folium.PolyLine([lt_abs,rt_abs,rb_abs,lb_abs,lt_abs],color='blue').add_to(self.fg_grid)
 
@@ -152,7 +157,7 @@ class Map_prestige():
         data_out = pgj.new()
         for i in range(0,len(data)):
             layer1 = Polygon(data.get_feature(i).geometry.coordinates[0])
-            layer2 = Polygon(points[0][0])
+            layer2 = Polygon(points[0])
             points_intersect = layer1.intersection(layer2)
             if not points_intersect.is_empty:
                 data_out.addfeature(data.get_feature(i))
@@ -314,7 +319,7 @@ class Map_prestige():
         self.draw_city_boundary(self.boundary,self.fg_cc)
         # self.draw_rivers()
         start = time.time()
-        self.generate_city_grid(self.fg_cc,self.m,10000)
+        self.generate_city_grid(self.fg_cc,self.m,5000)
         print("Генерация сетки", time.time() - start)
         self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
         start = time.time()
@@ -323,13 +328,13 @@ class Map_prestige():
         self.city_grid_l.save("./data/city_grid.geojson")
         print("Количество ячеек", self.city_grid_l.__len__())
         print("Потоков", self.threads)
-        self.calc_adjacency_matrix(self.city_grid_l,10000,False)
-
-        #print(osrm_routes.get_distante(points='13.388860,52.517037;13.397634,52.529407'))
-        #self.generate_route([ self.city_grid_l.get_feature(0).geometry.coordinates[0][2],self.city_grid_l.get_feature(11).geometry.coordinates[0][2]])
+        self.calc_adjacency_matrix(self.city_grid_l,5000,False)
+        #
+        # #print(osrm_routes.get_distante(points='13.388860,52.517037;13.397634,52.529407'))
+        # #self.generate_route([ self.city_grid_l.get_feature(0).geometry.coordinates[0][2],self.city_grid_l.get_feature(11).geometry.coordinates[0][2]])
         self.draw_city_grid(self.city_grid_l, self.fg_grid)
-        #self.draw_city_district(self.admins_geojs,self.fg_cd)
-        #self.draw_transport_points(self.tp_geojs,self.fg_tp)
+        # self.draw_city_district(self.admins_geojs,self.fg_cd)
+        # self.draw_transport_points(self.tp_geojs,self.fg_tp)
         self.m.add_child(folium.LayerControl())
         self.m.save(os.path.join('', 'map.html'))
         #webbrowser.open('map.html', new=2)
