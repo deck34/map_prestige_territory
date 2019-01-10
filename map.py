@@ -272,6 +272,9 @@ class Map_prestige():
         # print(status)
         # print(route)
 
+    def rms(x):
+        return np.sqrt(x.dot(x) / x.size)
+
     def calc_grad_eval_con_cells(self,matrix):
         eval_cells = []
         matrix_temp = []
@@ -307,7 +310,7 @@ class Map_prestige():
             self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(temp)
 
             for j in range(1,len(grad)):
-                if i_.mean() <= grad[j]:
+                if np.median(i_) <= grad[j]:
                     self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(
                         self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige']) + ' ' + str(
                         10 - j)
@@ -328,10 +331,8 @@ class Map_prestige():
         self.city_grid_l.save("./data/city_grid.geojson")
         print("Количество ячеек", self.city_grid_l.__len__())
         print("Потоков", self.threads)
-        self.calc_adjacency_matrix(self.city_grid_l,250,False)
+        self.calc_adjacency_matrix(self.city_grid_l,250,True)
 
-        #print(osrm_routes.get_distante(points='13.388860,52.517037;13.397634,52.529407'))
-        #self.generate_route([ self.city_grid_l.get_feature(0).geometry.coordinates[0][2],self.city_grid_l.get_feature(11).geometry.coordinates[0][2]])
         self.draw_city_grid(self.city_grid_l, self.fg_grid)
         self.m.add_child(folium.LayerControl())
         self.m.save(os.path.join('', 'map.html'))
@@ -340,3 +341,7 @@ class Map_prestige():
 if __name__ == '__main__':
     app = Map_prestige()
     app.main()
+
+
+#print(osrm_routes.get_distante(points='13.388860,52.517037;13.397634,52.529407'))
+#self.generate_route([ self.city_grid_l.get_feature(0).geometry.coordinates[0][2],self.city_grid_l.get_feature(11).geometry.coordinates[0][2]])

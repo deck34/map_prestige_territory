@@ -4,9 +4,9 @@ import os
 import pygeoj as pgj
 
 def from_txt_to_geojson():
-    input_file = open("./data/results_sib.txt", "r+")
+    input_file = open("./data/results_c.txt", "r+")
 
-    with open("./data/gis_osm_places_a_free_1_sib.csv", "r+",encoding='utf-8') as csvfile:
+    with open("./data/gis_osm_places_a_free_1_c.csv", "r+",encoding='utf-8') as csvfile:
         reader = csv.reader(csvfile, dialect='excel')
         # output_file = open('./data/bounds.txt', 'w+')
         list=[]
@@ -35,7 +35,7 @@ def from_txt_to_geojson():
             _points=points.copy()
             # if list[i][0] == "city" and list[i][1] == "Санкт-Петербург":
             # Для новосиба надо удалять 4 последние координаты
-            if list[i][0] == "city" and list[i][1] == "Новосибирск":
+            if list[i][0] == "city" and list[i][1] == "Москва":
                 bounds.add_feature(properties = {"name": list[i][1], "bbox": bbox},
                                    geometry={"type": "Polygon", "coordinates": [_points]})
             points.clear()
