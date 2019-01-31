@@ -209,11 +209,13 @@ class Map_prestige():
     def calc_adjacency_matrix(self,data,size,read_matrix):
 
         length = data.__len__()
+        # length = 14518
         global adj_matrix
         adj_matrix = np.zeros((length,length))
         start = time.time()
 
         if read_matrix:
+            #print("Размер", length)
             # TODO считывание матрицы с файла
             txt = open('./data/adjacency_matrix.txt').readlines()
             mas = []
@@ -224,6 +226,7 @@ class Map_prestige():
 
             for i in range(0, length):
                 for j in range(0, length):
+                    #print("i: ", i, " j: ", j)
                     adj_matrix[i][j] = float(mas[i][j])
         else:
             threads = []
@@ -272,8 +275,16 @@ class Map_prestige():
         # print(status)
         # print(route)
 
-    def rms(x):
+    def rms(self,x):
         return np.sqrt(x.dot(x) / x.size)
+
+    def avlog(self,x):
+        return np.log(np.sum(np.log(x)) / np.sum(x))
+
+    def avgeom(self,x):
+        a = np.power(np.sum(x),-x.size)
+        print(a)
+        return a
 
     def calc_grad_eval_con_cells(self,matrix):
         eval_cells = []
@@ -302,18 +313,19 @@ class Map_prestige():
             i_ = np.array(i)
             temp = []
 
-            for j in i:
-                for k in range(1, len(grad)):
-                    if j <= grad[k]:
-                        temp.append(10-k)
-                        break
-            self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(temp)
+            # for j in i:
+            #     for k in range(1, len(grad)):
+            #         if j <= grad[k]:
+            #             temp.append(10-k)
+            #             break
+            # self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(temp)
 
             for j in range(1,len(grad)):
                 if np.median(i_) <= grad[j]:
-                    self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(
-                        self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige']) + ' ' + str(
-                        10 - j)
+                    # self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(
+                    #     self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige']) + ' ' + str(
+                    #     10 - j)
+                    self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(10 - j)
                     self.city_grid_l.__dict__['_data']['features'][index]['properties']['fill_color'] = self.colors_grad[
                         10 - j]
                     break
@@ -329,13 +341,13 @@ class Map_prestige():
         self.city_grid_l = self.remove_null_cells(self.city_grid_l)
         print("Удаление пустых ячеек", time.time() - start)
         self.city_grid_l.save("./data/city_grid.geojson")
-        print("Количество ячеек", self.city_grid_l.__len__())
-        print("Потоков", self.threads)
+        # print("Количество ячеек", self.city_grid_l.__len__())
+        # print("Потоков", self.threads)
         self.calc_adjacency_matrix(self.city_grid_l,250,True)
-
-        self.draw_city_grid(self.city_grid_l, self.fg_grid)
-        self.m.add_child(folium.LayerControl())
-        self.m.save(os.path.join('', 'map.html'))
+        self.city_grid_l.save("./data/city_grid.geojson")
+        # self.draw_city_grid(self.city_grid_l, self.fg_grid)
+        # self.m.add_child(folium.LayerControl())
+        # self.m.save(os.path.join('', 'map.html'))
         #webbrowser.open('map.html', new=2)
 
 if __name__ == '__main__':
