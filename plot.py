@@ -145,6 +145,20 @@ class Plot():
             y.append(float(str.strip(s[1])))
         return x, y
 
+    def readPlotData1(self,data):
+        x = []
+        y = []
+        input_file = open("./data/plot_rms.txt", "r+")
+        i=0
+        for rec in input_file:
+            s = re.split('\t', rec)
+            x.append(float(str.strip(s[0])))
+            # y.append(float(str.strip(s[1])))
+            y.append((100-(int(data.get_feature(i).properties['prestige']))*2))
+            i+=1
+
+        return x, y
+
     def xy_tofile(self,x,y):
         output_file = open('./data/plot.txt', 'w+')
         for i in range(0,len(x)):
@@ -156,17 +170,17 @@ class Plot():
         # self.draw_city_grid(self.city_grid_l)
         start = time.time()
         try:
-            x, y = self.calc_length_parallel(self.city_grid_l)
-            print("Выполнение запросов к БД ", time.time() - start)
+            # x, y = self.calc_length_parallel(self.city_grid_l)
+            # print("Выполнение запросов к БД ", time.time() - start)
             # x, y = self.roadlgt_eval(self.city_grid_l)
-            # x, y = self.readPlotData()
+            x, y = self.readPlotData1(self.city_grid_l)
             self.plot_data(x, y)
         except  Exception:
             print(Exception)
 
-        start = time.time()
-        self.xy_tofile(x,y)
-        print("Сохранение в файл ", time.time() - start)
+        # start = time.time()
+        # self.xy_tofile(x,y)
+        # print("Сохранение в файл ", time.time() - start)
 
 if __name__ == '__main__':
     app = Plot()

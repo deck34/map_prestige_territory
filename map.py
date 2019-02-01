@@ -68,7 +68,12 @@ class RequesterThread(Thread):
 
 class Map_prestige():
     def __init__(self):
-        self.colors_grad = ["#E50023","#E01F00","#DC6000","#D89E00","#CDD400","#8CCF00","#4CCB00","#10C700","#00C32A","#00BF62"]
+        # self.colors_grad = ["#E50023","#E01F00","#DC6000","#D89E00","#CDD400","#8CCF00","#4CCB00","#10C700","#00C32A","#00BF62"]
+        self.colors_grad = ["#F92F38","#F7342E","#F6422E","#F4512E","#F3602E","#F16E2E","#F07C2D","#EE8A2D","#ED982D","#ECA52D",
+                            "#EAB32D","#E9C02D","#E7CD2C","#E6DA2C","#E2E42C","#D3E32C","#C4E12C","#B5E02B","#A6DF2B","#98DD2B"
+                            ,"#8ADC2B","#7BDA2B","#6DD92A","#60D72A","#52D62A","#45D52A","#37D32A","#2AD229","#29D035","#29CF41",
+                            "#29CD4D","#29CC59","#28CA65","#28C970","#28C87C","#28C687","#28C592","#27C39D","#27C2A7","#27C0B1",
+                            "#27BFBC","#27B5BD","#26A9BC","#269CBB","#2690B9","#2684B8","#2578B6","#256CB5","#2560B3","#2555B2","#244AB1"]
         self.threads = 100
 
         self.m = folium.Map(location=[ 48.747316, 44.51088], zoom_start=4)
@@ -307,7 +312,7 @@ class Map_prestige():
         grad_min = np.min(temp_min)
         grad_max = np.max(temp_max)
 
-        grad = np.linspace(grad_min, grad_max, 11)
+        grad = np.linspace(grad_min, grad_max, 51)
         index = 0
         for i in matrix:
             i_ = np.array(i)
@@ -321,13 +326,12 @@ class Map_prestige():
             # self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(temp)
 
             for j in range(1,len(grad)):
-                if np.median(i_) <= grad[j]:
+                if self.rms(i_) <= grad[j]:
                     # self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(
                     #     self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige']) + ' ' + str(
                     #     10 - j)
-                    self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(10 - j)
-                    self.city_grid_l.__dict__['_data']['features'][index]['properties']['fill_color'] = self.colors_grad[
-                        10 - j]
+                    self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(j)
+                    self.city_grid_l.__dict__['_data']['features'][index]['properties']['fill_color'] = self.colors_grad[j]
                     break
             index += 1
 
@@ -345,9 +349,9 @@ class Map_prestige():
         # print("Потоков", self.threads)
         self.calc_adjacency_matrix(self.city_grid_l,250,True)
         self.city_grid_l.save("./data/city_grid.geojson")
-        # self.draw_city_grid(self.city_grid_l, self.fg_grid)
-        # self.m.add_child(folium.LayerControl())
-        # self.m.save(os.path.join('', 'map.html'))
+        self.draw_city_grid(self.city_grid_l, self.fg_grid)
+        self.m.add_child(folium.LayerControl())
+        self.m.save(os.path.join('', 'map.html'))
         #webbrowser.open('map.html', new=2)
 
 if __name__ == '__main__':
