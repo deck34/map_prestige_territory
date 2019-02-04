@@ -9,10 +9,13 @@ import string
 import pygeoj as pgj
 from geographiclib.geodesic import Geodesic
 from shapely.geometry import Point, Polygon
+from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np
 import time
 from threading import Thread
+from collections import Counter
+from collections import OrderedDict
 
 x = np.zeros(5)
 y = np.zeros(5)
@@ -145,10 +148,10 @@ class Plot():
             y.append(float(str.strip(s[1])))
         return x, y
 
-    def readPlotData1(self,data):
+    def readPlotData1(self,name,data):
         x = []
         y = []
-        input_file = open("./data/plot_rms.txt", "r+")
+        input_file = open(name, "r+")
         i=0
         for rec in input_file:
             s = re.split('\t', rec)
@@ -165,18 +168,192 @@ class Plot():
             s = str(x[i]) + '\t' + str(y[i]) + '\n'
             output_file.write(s)
 
+    def plot_hist(self):
+        self.city_grid_rms = pgj.load(filepath="./data/city_grid_rms_grad50_1.geojson")
+        self.city_grid_mean = pgj.load(filepath="./data/city_grid_mean_grad50_1.geojson")
+        self.city_grid_median = pgj.load(filepath="./data/city_grid_median_grad50_1.geojson")
+        x1, y1 = self.readPlotData1("./data/plot_rms.txt", self.city_grid_rms)
+        x2, y2 = self.readPlotData1("./data/plot_mean.txt", self.city_grid_mean)
+        x3, y3 = self.readPlotData1("./data/plot_median.txt", self.city_grid_median)
+
+        plt.hist((y1,y2,y3), label=('rms', 'mean', 'median'))
+        plt.xlabel('Аssessment')
+        plt.ylabel('Road length')
+        plt.title('Compare')
+        plt.legend()
+        # xi = [i for i in range(min(min(y1),min(y2),min(y3)), max(max(y1),max(y2),max(y3)),5)]
+        # xi = [i for i in range(30, 80, 5)]
+        # plt.xticks(xi)
+        # plt.xlim(min(min(y1),min(y2),min(y3))-5, max(max(y1),max(y2),max(y3))+5)
+        plt.show()
+
+    def plot_bar(self):
+        self.city_grid_rms = pgj.load(filepath="./data/city_grid_rms_grad50_1.geojson")
+        self.city_grid_mean = pgj.load(filepath="./data/city_grid_mean_grad50_1.geojson")
+        self.city_grid_median = pgj.load(filepath="./data/city_grid_median_grad50_1.geojson")
+        x1, y1 = self.readPlotData1("./data/plot_rms.txt", self.city_grid_rms)
+        x2, y2 = self.readPlotData1("./data/plot_mean.txt", self.city_grid_mean)
+        x3, y3 = self.readPlotData1("./data/plot_median.txt", self.city_grid_median)
+
+        # plt.hist((y1,y2,y3), label=('rms', 'mean', 'median'))
+        n_groups = max(len(y1), len(y2), len(y3))
+        fig, ax = plt.subplots()
+        index = np.arange(n_groups)
+        bar_width = 0.2
+        opacity = 0.8
+        b1 = ax.bar(np.arange(len(x1)), x1, bar_width, alpha=opacity, color='b', label=('rms'))
+        b2 = ax.bar(np.arange(len(x2)) + bar_width, x2, bar_width, alpha=opacity, color='g', label=('mean'))
+        b3 = ax.bar(np.arange(len(x3)) + bar_width * 2, x3, bar_width, alpha=opacity, color='r', label=('median'))
+        plt.xlabel('Аssessment')
+        plt.ylabel('Road length')
+        plt.title('Compare')
+        plt.legend()
+        plt.tight_layout()
+        # plt.xticks(index + bar_width, y3)
+        plt.show()
+
+    def plot_bar1(self):
+        self.city_grid_rms = pgj.load(filepath="./data/city_grid_rms_grad50_1.geojson")
+        self.city_grid_mean = pgj.load(filepath="./data/city_grid_mean_grad50_1.geojson")
+        self.city_grid_median = pgj.load(filepath="./data/city_grid_median_grad50_1.geojson")
+        x1, y1 = self.readPlotData1("./data/plot_rms.txt", self.city_grid_rms)
+        x2, y2 = self.readPlotData1("./data/plot_mean.txt", self.city_grid_mean)
+        x3, y3 = self.readPlotData1("./data/plot_median.txt", self.city_grid_median)
+
+        count_y1 = OrderedDict(sorted(Counter(y1).items()))
+        count_y2 = OrderedDict(sorted(Counter(y2).items()))
+        count_y3 = OrderedDict(sorted(Counter(y3).items()))
+
+        y1_data = np.fromiter(count_y1.keys(), dtype=float)
+        y2_data = np.fromiter(count_y2.keys(), dtype=float)
+        y3_data = np.fromiter(count_y3.keys(), dtype=float)
+        x1_data = np.fromiter(count_y1.values(), dtype=float)
+        x2_data = np.fromiter(count_y2.values(), dtype=float)
+        x3_data = np.fromiter(count_y3.values(), dtype=float)
+        # for i in range(0,len(count_y1)):
+        #     a=count_y1.get(i)
+        #     b=0
+        # n_groups = 3
+        # index = np.arange(n_groups)
+        # bar_width = 0.35
+        n_groups = max(len(y1_data),len(y2_data),len(y3_data))
+        fig, ax = plt.subplots()
+        index = np.arange(n_groups)
+        bar_width = 0.2
+        opacity = 0.8
+        b1 = ax.bar(np.arange(len(x1_data)), x1_data, bar_width, alpha=opacity, color='b', label=('rms'))
+        b2 = ax.bar(np.arange(len(x2_data)) + bar_width, x2_data, bar_width, alpha=opacity, color='g', label=('mean'))
+        b3 = ax.bar(np.arange(len(x3_data)) + bar_width*2, x3_data, bar_width, alpha=opacity, color='r', label=('median'))
+        # plt.bar((y1_data, y2_data, y3_data), (x1_data, x2_data, x3_data), label=('rms', 'mean', 'median'))
+        # plt.bar(y1_data,x1_data, label=('rms'))
+        # plt.bar(y2_data, x2_data, label=('mean'))
+        # plt.bar(y2_data, x2_data, label=('median'))
+        plt.xlabel('Аssessment')
+        plt.ylabel('Count')
+        plt.title('Compare')
+        plt.legend()
+        # plt.colorbar()
+        # xi = [i for i in range(min(min(y1),min(y2),min(y3)), max(max(y1),max(y2),max(y3)),5)]
+        # xi = [i for i in range(30, 80, 5)]
+        plt.xticks(index + bar_width,y3_data)
+        # plt.yticks(range(0, 100,10))
+        # plt.xlim(min(min(y1),min(y2),min(y3))-5, max(max(y1),max(y2),max(y3))+5)
+        plt.tight_layout()
+        plt.show()
+
+    def f(self):
+        self.city_grid_rms = pgj.load(filepath="./data/city_grid_rms_grad50_1.geojson")
+        self.city_grid_mean = pgj.load(filepath="./data/city_grid_mean_grad50_1.geojson")
+        self.city_grid_median = pgj.load(filepath="./data/city_grid_median_grad50_1.geojson")
+        x1, y1 = self.readPlotData1("./data/plot_rms.txt", self.city_grid_rms)
+        x2, y2 = self.readPlotData1("./data/plot_mean.txt", self.city_grid_mean)
+        x3, y3 = self.readPlotData1("./data/plot_median.txt", self.city_grid_median)
+        y1_data = np.fromiter(Counter(y1).keys(), dtype=float)
+        y2_data = np.fromiter(Counter(y2).keys(), dtype=float)
+        y3_data = np.fromiter(Counter(y3).keys(), dtype=float)
+        x1_data = np.fromiter(Counter(y1).values(), dtype=float)
+        x2_data = np.fromiter(Counter(y2).values(), dtype=float)
+        x3_data = np.fromiter(Counter(y3).values(), dtype=float)
+
+        # data to plot
+        n_groups = 4
+        means_frank = (90, 55, 40, 65,10)
+        means_guido = (85, 62, 54, 20)
+
+        # create plot
+        fig, ax = plt.subplots()
+        index = np.arange(n_groups)
+        bar_width = 0.35
+        opacity = 0.8
+
+        rects1 = plt.bar(np.arange(len(means_frank)), means_frank, bar_width,
+                         alpha=opacity,
+                         color='b',
+                         label='Frank')
+
+        rects2 = plt.bar(np.arange(len(means_guido)) + bar_width, means_guido, bar_width,
+                         alpha=opacity,
+                         color='g',
+                         label='Guido')
+
+        plt.xlabel('Person')
+        plt.ylabel('Scores')
+        plt.title('Scores by person')
+        plt.xticks(index + bar_width, ('A', 'B', 'C', 'D'))
+        plt.legend()
+
+        plt.tight_layout()
+        plt.show()
+
+    def plot_hist3d(self):
+        self.city_grid_rms = pgj.load(filepath="./data/city_grid_rms_grad50_1.geojson")
+        # # self.city_grid_mean = pgj.load(filepath="./data/city_grid_mean_grad50_1.geojson")
+        # # self.city_grid_median = pgj.load(filepath="./data/city_grid_median_grad50_1.geojson")
+        x1, y1 = self.readPlotData1("./data/plot_rms.txt", self.city_grid_rms)
+        # # x2, y2 = self.readPlotData1("./data/plot_mean.txt", self.city_grid_mean)
+        # # x3, y3 = self.readPlotData1("./data/plot_median.txt", self.city_grid_median)
+        #
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        x_data = np.array(y1).flatten()
+        y_data = np.array(x1).flatten()
+        count_array = Counter(y1)
+        z_data = []
+        for i in range(0,len(y1)):
+            z_data.append(count_array[y1[i]])
+        # # vals = np.fromiter(Counter(y1).values(), dtype=float)
+        # # z_data = vals.flatten()
+        z_data = np.array(z_data).flatten()
+
+        # data_2d = [[1, 2, 3, 4],
+        #            [7, 6, 5, 4],
+        #            [7, 8, 9, 10]]
+        # data_array = np.array(data_2d)
+        # x_data, y_data = np.meshgrid(np.arange(data_array.shape[1]),
+        #                              np.arange(data_array.shape[0]))
+        # x_data = x_data.flatten()
+        # y_data = y_data.flatten()
+        # z_data = data_array.flatten()
+        ax.bar3d(x_data,
+                 y_data,
+                 np.zeros(len(z_data)),
+                 1, 1, z_data)
+        plt.show()
+
     def main(self):
-        self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
-        # self.draw_city_grid(self.city_grid_l)
-        start = time.time()
-        try:
-            # x, y = self.calc_length_parallel(self.city_grid_l)
-            # print("Выполнение запросов к БД ", time.time() - start)
-            # x, y = self.roadlgt_eval(self.city_grid_l)
-            x, y = self.readPlotData1(self.city_grid_l)
-            self.plot_data(x, y)
-        except  Exception:
-            print(Exception)
+        # self.f()
+        self.plot_bar()
+        # self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
+        # # self.draw_city_grid(self.city_grid_l)
+        # start = time.time()
+        # try:
+        #     # x, y = self.calc_length_parallel(self.city_grid_l)
+        #     # print("Выполнение запросов к БД ", time.time() - start)
+        #     # x, y = self.roadlgt_eval(self.city_grid_l)
+        #     x, y = self.readPlotData1("./data/plot_rms.txt", self.city_grid_l)
+        #     self.plot_data(x, y)
+        # except  Exception:
+        #     print(Exception)
 
         # start = time.time()
         # self.xy_tofile(x,y)
