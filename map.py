@@ -2,6 +2,7 @@
 import os
 import folium
 import time
+import re
 # import sys
 # from geodata import *
 # from folium.features import DivIcon
@@ -11,6 +12,7 @@ from geographiclib.geodesic import Geodesic
 from shapely.geometry import Point, Polygon
 import numpy as np
 from threading import Thread
+from scipy.stats.mstats import gmean
 
 
 # from pyroutelib3 import Router
@@ -79,8 +81,8 @@ class Map_prestige():
                             "#978E34", "#859A40", "#71A553", "#5AAE6C", "#3EB688", "#1FBCA6", "#17C0C2", "#40C3DC",
                             "#6FC2EF", "#9FBFFB", "#CEBAFD", "#F8B3F7", "#F0ABEB", "#E7A2E0", "#DE9AD4", "#D592C9",
                             "#CC8ABE", "#C382B3", "#BA7AA9", "#B1739E", "#A76B94", "#9E648A","#955D80", "#8B5576",
-                            "#824F6D", "#794863", "#6F415A", "#663B51", "#5D3449", "#542E41", "#2578B6", "#4B2838",
-                            "#422231", "#391D29", "#301722"]
+                            "#824F6D", "#794863", "#6F415A", "#663B51", "#5D3449", "#542E41", "#4B2838","#422231",
+                            "#391D29", "#301722"]
 
         self.threads = 100
 
@@ -334,12 +336,36 @@ class Map_prestige():
             # self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(temp)
 
             for j in range(1,len(grad)):
-                if self.rms(i_) <= grad[j]:
+                if gmean(i_) <= grad[j]:
                     # self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(
                     #     self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige']) + ' ' + str(
                     #     10 - j)
                     self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(j)
                     self.city_grid_l.__dict__['_data']['features'][index]['properties']['fill_color'] = self.colors_grad[j]
+                    break
+            index += 1
+
+    def readPlotData(self,file_name):
+        x = []
+        y = []
+        input_file = open(file_name, "r+")
+        for rec in input_file:
+            s = re.split('\t', rec)
+            x.append(float(str.strip(s[0])))
+            y.append(float(str.strip(s[1])))
+        return x, y
+
+    def calc_grad_eval_road_length(self, mass):
+        grad_min = np.min(mass)
+        grad_max = np.max(mass)
+
+        grad = np.linspace(grad_min, grad_max, 51)
+        index = 0
+        for i in mass:
+            for j in range(1,len(grad)):
+                if i <= grad[j]:
+                    self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(50-j)
+                    self.city_grid_l.__dict__['_data']['features'][index]['properties']['fill_color'] = self.colors_grad[50-j]
                     break
             index += 1
 
@@ -355,12 +381,33 @@ class Map_prestige():
         self.city_grid_l.save("./data/city_grid.geojson")
         # print("Количество ячеек", self.city_grid_l.__len__())
         # print("Потоков", self.threads)
-        self.calc_adjacency_matrix(self.city_grid_l,250,True)
+        # self.calc_adjacency_matrix(self.city_grid_l,250,True)
+        x, y = self.readPlotData("./data/plot_rms.txt")
+        self.calc_grad_eval_road_length(x)
         self.city_grid_l.save("./data/city_grid.geojson")
         self.draw_city_grid(self.city_grid_l, self.fg_grid)
         self.m.add_child(folium.LayerControl())
         self.m.save(os.path.join('', 'map.html'))
         #webbrowser.open('map.html', new=2)
+
+    # def main(self):
+    #     self.draw_city_boundary(self.boundary,self.fg_cc)
+    #     start = time.time()
+    #     self.generate_city_grid(self.fg_cc,self.m,250)
+    #     print("Генерация сетки", time.time() - start)
+    #     self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
+    #     start = time.time()
+    #     self.city_grid_l = self.remove_null_cells(self.city_grid_l)
+    #     print("Удаление пустых ячеек", time.time() - start)
+    #     self.city_grid_l.save("./data/city_grid.geojson")
+    #     # print("Количество ячеек", self.city_grid_l.__len__())
+    #     # print("Потоков", self.threads)
+    #     self.calc_adjacency_matrix(self.city_grid_l,250,True)
+    #     self.city_grid_l.save("./data/city_grid.geojson")
+    #     self.draw_city_grid(self.city_grid_l, self.fg_grid)
+    #     self.m.add_child(folium.LayerControl())
+    #     self.m.save(os.path.join('', 'map.html'))
+    #     #webbrowser.open('map.html', new=2)
 
 if __name__ == '__main__':
     app = Map_prestige()
