@@ -3,6 +3,7 @@ import os
 import folium
 import time
 import re
+import csv
 # import sys
 # from geodata import *
 # from folium.features import DivIcon
@@ -12,8 +13,10 @@ from geographiclib.geodesic import Geodesic
 from shapely.geometry import Point, Polygon
 import numpy as np
 from threading import Thread
-from scipy.stats.mstats import gmean
-
+import matplotlib.pyplot as plt
+# from scipy.stats.mstats import gmean
+#
+# import psycopg2 as psql
 
 # from pyroutelib3 import Router
 from osrm_routes import osrm_routes
@@ -86,7 +89,7 @@ class Map_prestige():
 
         self.threads = 100
 
-        self.m = folium.Map(location=[ 48.747316, 44.51088], zoom_start=4)
+        self.m = folium.Map(location=[ 48.747316, 44.51088], zoom_start=10)
 
         self.boundary = pgj.load(filepath="./data/bounds.geojson")
 
@@ -151,12 +154,17 @@ class Map_prestige():
                 points = [[lt, rt, rb, lb]]
                 city_grid.add_feature(properties = {"stroke": "#fc1717",
                                                     "fill_color": "#85cdc1",
+                                                    "tr1": i + j,
+                                                    "tr2": i + j,
+                                                    "obj1": i + j,
+                                                    "obj2": i + j,
+                                                    "obj3": i + j,
                                                     "prestige": i+j},
                                         geometry={"type": "Polygon", "coordinates": points})
 
         city_grid.save("./data/city_grid.geojson")
 
-    def draw_city_grid(self,data,featuregroup):
+    def draw_city_grid(self,data,featuregroup,param):
         for gj in data.__dict__['_data']['features']:
             pl = folium.GeoJson(gj, style_function=lambda x: {
                 'color': x['properties']['stroke'],
@@ -164,7 +172,7 @@ class Map_prestige():
                 'opacity': 0,
                 'fillOpacity': 0.5
             })
-            s = str(gj['properties']['prestige'])
+            s = str(gj['properties'][param])
             pl.add_child(folium.Popup(s[len(s)-2:len(s)]))
             pl.add_to(featuregroup)
 
@@ -336,14 +344,103 @@ class Map_prestige():
             # self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(temp)
 
             for j in range(1,len(grad)):
-                if gmean(i_) <= grad[j]:
+                if np.median(i_) <= grad[j]:
                     # self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(
                     #     self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige']) + ' ' + str(
                     #     10 - j)
-                    self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(j)
-                    self.city_grid_l.__dict__['_data']['features'][index]['properties']['fill_color'] = self.colors_grad[j]
+                    self.city_grid_l.__dict__['_data']['features'][index]['properties']['tr1'] = str(j)
+                    # self.city_grid_l.__dict__['_data']['features'][index]['properties']['fill_color'] = self.colors_grad[j]
                     break
             index += 1
+
+    def load_station(self):
+        with open("./data/station.csv", "r+", encoding='cp1251') as csvfile:
+            reader = csv.reader(csvfile, dialect='excel')
+            list = []
+            first = True
+            i = 0
+            for rec in reader:
+                if first:
+                    first = False
+                    continue
+                s = re.split(';', rec[0])
+                list.append([float(s[1].strip()), float(s[2].strip())])
+                i += 1
+                if i > 10000:
+                    break
+        return list
+
+    def load_education_medicine(self,file):
+        with open(file, "r+", encoding='cp1251') as csvfile:
+            reader = csv.reader(csvfile, dialect='excel')
+            list = []
+            first = True
+            i = 0
+            for rec in reader:
+                if first:
+                    first = False
+                    continue
+                s = re.split(';', rec[0])
+                s1 = re.split(' ', s[2])
+                list.append([float(s1[0].strip()), float(s1[1].strip())])
+                i += 1
+                if i > 10000:
+                    break
+        return list
+
+    def calc_eval_station(self,objects,data,size,param, saveload):
+        radius = size * (2 ** 0.5) / 2
+        distances = []
+        if saveload == 1:
+            print("calc start " + param)
+            for i in range(0,len(data)):
+                p1 = Map_prestige.get_new_coord(self, (data.get_feature(i).geometry.coordinates[0][0]), 135, radius)
+                dist = []
+                for j in objects:
+                    c1 = [float(p1[0]), float(p1[1])]
+                    c2 = [float(j[0]), float(j[1])]
+                    x = self.get_distance([c1, c2])
+                    dist.append(x)
+                distances.append(np.min(dist))
+            output_file = open('./data/' + param + '_matrix.txt', 'w+')
+            for i in distances:
+                output_file.write(str(i) + '\t')
+                output_file.write('\n')
+            print("calc done " + param)
+
+
+        matrix = np.array(distances)
+        temp_min = []
+        temp_max = []
+        # for i in matrix:
+        #     temp_min.append(np.min(i))
+        #     temp_max.append(np.max(i))
+        grad_min = np.min(matrix)
+        grad_max = np.max(matrix)
+
+        grad = np.linspace(grad_min, grad_max, 50)
+
+        print("eval start " + param)
+        index = 0
+        for i in matrix:
+            for j in range(1, len(grad)):
+                if i <= grad[j]:
+                    self.city_grid_l.__dict__['_data']['features'][index]['properties'][param] = str(j)
+                    # try:
+                    #     self.city_grid_l.__dict__['_data']['features'][index]['properties']['fill_color'] = self.colors_grad[j]
+                    # except  Exception:
+                    #     print(i)
+                    #     print(j)
+                    #     print(index)
+                    break
+            index += 1
+        print("eval done " + param)
+
+    def visualize_eval(self, objects, data, size, param):
+        print("eval start " + param)
+        for index in range(0,len(data)):
+            self.city_grid_l.__dict__['_data']['features'][index]['properties']['fill_color'] = self.colors_grad[int(self.city_grid_l.__dict__['_data']['features'][index]['properties'][param])]
+        print("eval done " + param)
 
     def readPlotData(self,file_name):
         x = []
@@ -369,25 +466,126 @@ class Map_prestige():
                     break
             index += 1
 
+    def amenity_count(self,coords):
+        db = psql.connect(dbname='postgis_db', user='postgis_db', password='postgis_db', host='localhost')
+        curr = db.cursor()
+        r = "SELECT amenity, COUNT(*) AS cnt FROM planet_osm_point WHERE amenity <> '' GROUP BY amenity ORDER BY cnt DESC"
+
+        curr.execute(r)
+        r = curr.fetchall()
+
+    def calc_prestige(self, data, param):
+        prestiges = []
+        for index in range(0,len(data)):
+            prestige = 0
+            tr1 = int(self.city_grid_l.__dict__['_data']['features'][index]['properties']['tr1'])
+            tr2 = int(self.city_grid_l.__dict__['_data']['features'][index]['properties']['tr2'])
+            obj1 = int(self.city_grid_l.__dict__['_data']['features'][index]['properties']['obj1'])
+            obj2 = int(self.city_grid_l.__dict__['_data']['features'][index]['properties']['obj2'])
+            obj3 = 0
+            if param == 1:
+                prestige = tr1 + tr2 + obj1 + obj2 + obj3
+            elif param == 2:
+                prestige = tr1 + tr2 + 0.5*obj1 + 0.5*obj2 + 0.5*obj3
+            elif param == 3:
+                prestige = 0.34*tr1 + 0.66*tr2 + 0.38*obj1 + 0.68*obj2 + 0.58*obj3
+
+            prestiges.append(prestige)
+            self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = prestige
+
+        matrix = np.array(prestiges)
+        grad_min = np.min(matrix)
+        grad_max = np.max(matrix)
+
+        grad = np.linspace(grad_min, grad_max, 50)
+        print("prestige eval start " + str(param))
+        index = 0
+        for i in matrix:
+            for j in range(1, len(grad)):
+                if i <= grad[j]:
+                    self.city_grid_l.__dict__['_data']['features'][index]['properties']['prestige'] = str(j)
+                    try:
+                        self.city_grid_l.__dict__['_data']['features'][index]['properties']['fill_color'] = self.colors_grad[j]
+                    except  Exception:
+                        print(i)
+                        print(j)
+                        print(index)
+                    break
+            index += 1
+        print("prestige eval done " + str(param))
+
+    def prepare_data(self,data):
+        with open("./data/group-1.csv", "r+", encoding='cp1251') as csvfile:
+            reader = csv.reader(csvfile, dialect='excel')
+            list = []
+            first = True
+            i = 0
+            for rec in reader:
+                if first:
+                    first = False
+                    continue
+                s = re.split(';', rec[0])
+                list.append([float(s[2].strip()), float(s[3].strip()), float(s[1].strip())])
+                i += 1
+                if i > 10000:
+                    break
+
+        output_file = open('./data/prices_matrix.txt', 'w+')
+
+        for i in range(0,len(data)):
+            prices = []
+            layer1 = Polygon(data.get_feature(i).geometry.coordinates[0])
+            for j in list:
+                layer2 = Point(j[0],j[1])
+                points_intersect = layer1.intersection(layer2)
+                if not points_intersect.is_empty:
+                    prices.append(j[2])
+            if len(prices) == 0:
+                med = 0
+            else:
+                med = np.median(prices)
+            output_file.write(str(med) + '\t')
+            output_file.write('\n')
+
     def main(self):
         self.draw_city_boundary(self.boundary,self.fg_cc)
-        start = time.time()
-        self.generate_city_grid(self.fg_cc,self.m,250)
-        print("Генерация сетки", time.time() - start)
+        # start = time.time()
+        # self.generate_city_grid(self.fg_cc,self.m,250)
+        # print("Генерация сетки", time.time() - start)
         self.city_grid_l = pgj.load(filepath="./data/city_grid.geojson")
-        start = time.time()
-        self.city_grid_l = self.remove_null_cells(self.city_grid_l)
-        print("Удаление пустых ячеек", time.time() - start)
-        self.city_grid_l.save("./data/city_grid.geojson")
+        # start = time.time()
+        # self.city_grid_l = self.remove_null_cells(self.city_grid_l)
+        # print("Удаление пустых ячеек", time.time() - start)
+        # self.city_grid_l.save("./data/city_grid.geojson")
         # print("Количество ячеек", self.city_grid_l.__len__())
-        # print("Потоков", self.threads)
+        # # print("Потоков", self.threads)
         # self.calc_adjacency_matrix(self.city_grid_l,250,True)
-        x, y = self.readPlotData("./data/plot_rms.txt")
-        self.calc_grad_eval_road_length(x)
-        self.city_grid_l.save("./data/city_grid.geojson")
-        self.draw_city_grid(self.city_grid_l, self.fg_grid)
-        self.m.add_child(folium.LayerControl())
-        self.m.save(os.path.join('', 'map.html'))
+        # self.city_grid_l.save("./data/city_grid.geojson")
+
+        # stations = self.load_station()
+        # self.calc_eval_station(stations, self.city_grid_l, 250, 'tr2')
+        # self.city_grid_l.save("./data/city_grid.geojson")
+
+        # medicine = self.load_education_medicine("./data/medicine.csv")
+        # self.calc_eval_station(medicine, self.city_grid_l, 250, 'obj1')
+        # self.city_grid_l.save("./data/city_grid.geojson")
+
+        # educations = self.load_education_medicine("./data/education.csv")
+        # self.calc_eval_station(educations, self.city_grid_l, 250, 'obj2')
+        # self.city_grid_l.save("./data/city_grid.geojson")
+
+        # x, y = self.readPlotData("./data/plot_rms.txt")
+        # self.calc_grad_eval_road_length(x)
+        # self.city_grid_l.save("./data/city_grid.geojson")
+        self.plot(self.city_grid_l)
+
+        # pr_type = 3
+        # self.calc_prestige(self.city_grid_l,pr_type)
+        #
+        # self.draw_city_grid(self.city_grid_l, self.fg_grid, 'prestige')
+        # self.m.add_child(folium.LayerControl())
+        # self.m.save(os.path.join('', 'map_pr'+str(pr_type)+'.html'))
+
         #webbrowser.open('map.html', new=2)
 
     # def main(self):
